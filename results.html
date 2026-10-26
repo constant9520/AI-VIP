@@ -1,0 +1,742 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>AI Interviewer — Interview Results</title>
+<style>
+  @import url('https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@300;400;500;600;700&family=JetBrains+Mono:wght@400;500;600&family=Inter:wght@400;500;600&display=swap');
+
+  :root {
+    --bg: #0a0d12;
+    --panel: rgba(18, 22, 31, 0.65);
+    --panel-2: #161b26;
+    --border: rgba(79, 227, 193, 0.18);
+    --border-strong: rgba(79, 227, 193, 0.4);
+    --text: #e7ebf0;
+    --text-dim: #8891a0;
+    --text-faint: #4d5561;
+    --cyan: #4fe3c1;
+    --cyan-glow: rgba(79, 227, 193, 0.35);
+    --amber: #ffb454;
+    --amber-glow: rgba(255, 180, 84, 0.35);
+    --violet: #6c6ff5;
+    --violet-glow: rgba(108, 111, 245, 0.35);
+    --danger: #ff6b6b;
+    --radius: 16px;
+    --theme-color: var(--cyan);
+    --font-sans: 'Space Grotesk', sans-serif;
+    --font-mono: 'JetBrains Mono', monospace;
+  }
+
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  html, body {
+    height: 100%;
+    background: var(--bg);
+    color: var(--text);
+    font-family: 'Inter', sans-serif;
+    overflow-x: hidden;
+  }
+
+  /* ---------- BACKGROUND ENVIRONMENT ---------- */
+  .atmosphere { position: fixed; inset: 0; z-index: 0; overflow: hidden; pointer-events: none; }
+  .glow { position: absolute; border-radius: 50%; filter: blur(140px); opacity: .18; transition: all 0.8s ease; }
+  .glow--primary { width: 600px; height: 600px; background: var(--cyan); top: -150px; left: -150px; }
+  .glow--secondary { width: 500px; height: 500px; background: var(--violet); bottom: -150px; right: -100px; }
+
+  .grid-floor { position: absolute; inset: 0; perspective: 600px; perspective-origin: 50% 20%; }
+  .grid-floor::before {
+    content: ""; position: absolute; left: -50%; right: -50%; bottom: -10%; height: 160%;
+    background-image: linear-gradient(rgba(255,255,255,0.015) 1px, transparent 1px), linear-gradient(90deg, rgba(255,255,255,0.015) 1px, transparent 1px);
+    background-size: 56px 56px; transform: rotateX(75deg); transform-origin: bottom;
+    animation: gridDrift 25s linear infinite;
+    mask-image: linear-gradient(to top, rgba(0,0,0,0.8), transparent 75%);
+    -webkit-mask-image: linear-gradient(to top, rgba(0,0,0,0.8), transparent 75%);
+  }
+  @keyframes gridDrift { from { background-position: 0 0; } to { background-position: 0 56px; } }
+
+  /* ---------- MAIN WRAPPER ---------- */
+  .app-container {
+    position: relative;
+    z-index: 10;
+    max-width: 1200px;
+    margin: 0 auto;
+    padding: 30px 20px;
+    display: flex;
+    flex-direction: column;
+    gap: 24px;
+    min-height: 100vh;
+  }
+
+  /* ---------- HEADER ---------- */
+  header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    background: var(--panel);
+    border: 1px solid var(--border);
+    border-radius: var(--radius);
+    padding: 16px 28px;
+    backdrop-filter: blur(20px);
+    -webkit-backdrop-filter: blur(20px);
+  }
+
+  .logo-block {
+    display: flex;
+    flex-direction: column;
+  }
+  .logo-title {
+    font-family: var(--font-sans);
+    font-size: 20px;
+    font-weight: 700;
+    letter-spacing: 0.05em;
+    color: var(--cyan);
+  }
+  .logo-sub {
+    font-family: var(--font-mono);
+    font-size: 10px;
+    color: var(--text-dim);
+    letter-spacing: 0.1em;
+  }
+
+  .meta-badges {
+    display: flex;
+    gap: 12px;
+  }
+  .badge {
+    background: rgba(255, 255, 255, 0.02);
+    border: 1px solid var(--border);
+    padding: 6px 12px;
+    border-radius: 8px;
+    font-size: 12px;
+    font-family: var(--font-sans);
+  }
+  .badge strong {
+    color: var(--cyan);
+  }
+
+  /* ---------- RESULTS LAYOUT GRID ---------- */
+  .results-grid {
+    display: grid;
+    grid-template-columns: 1.1fr 1.9fr;
+    gap: 24px;
+  }
+
+  @media (max-width: 850px) {
+    .results-grid {
+      grid-template-columns: 1fr;
+    }
+  }
+
+  /* ---------- CARD PANELS ---------- */
+  .results-card {
+    background: var(--panel);
+    border: 1px solid var(--border);
+    border-radius: var(--radius);
+    padding: 28px;
+    backdrop-filter: blur(20px);
+    -webkit-backdrop-filter: blur(20px);
+    box-shadow: 0 20px 60px rgba(0,0,0,0.5);
+    display: flex;
+    flex-direction: column;
+    gap: 24px;
+  }
+
+  .card-headline {
+    font-family: var(--font-sans);
+    font-weight: 600;
+    font-size: 18px;
+    color: var(--cyan);
+    border-bottom: 1px solid var(--border);
+    padding-bottom: 12px;
+    letter-spacing: 0.05em;
+  }
+
+  /* ---------- DYNAMIC OVERALL SCORE WHEEL ---------- */
+  .score-wheel-container {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    padding: 10px 0;
+    position: relative;
+  }
+
+  .radial-svg {
+    transform: rotate(-90deg);
+  }
+
+  .radial-bg {
+    fill: none;
+    stroke: rgba(255, 255, 255, 0.03);
+    stroke-width: 14;
+  }
+
+  .radial-fill {
+    fill: none;
+    stroke: var(--cyan);
+    stroke-width: 14;
+    stroke-linecap: round;
+    stroke-dasharray: 440;
+    stroke-dashoffset: 440;
+    transition: stroke-dashoffset 1.5s cubic-bezier(0.16, 1, 0.3, 1) 0.3s;
+    filter: drop-shadow(0 0 10px var(--cyan-glow));
+  }
+
+  .wheel-score-overlay {
+    position: absolute;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+  }
+
+  .wheel-num {
+    font-family: var(--font-sans);
+    font-size: 52px;
+    font-weight: 700;
+    line-height: 1.1;
+    color: var(--text);
+  }
+
+  .wheel-label {
+    font-family: var(--font-mono);
+    font-size: 10px;
+    color: var(--text-dim);
+    letter-spacing: 0.15em;
+    text-transform: uppercase;
+  }
+
+  /* ---------- INDIVIDUAL CATEGORY RATINGS ---------- */
+  .category-ratings {
+    display: flex;
+    flex-direction: column;
+    gap: 18px;
+  }
+
+  .rating-row {
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+  }
+
+  .rating-header {
+    display: flex;
+    justify-content: space-between;
+    font-size: 13px;
+    font-family: var(--font-sans);
+  }
+
+  .rating-title {
+    font-weight: 500;
+    color: var(--text);
+  }
+  .rating-score {
+    font-family: var(--font-mono);
+    color: var(--cyan);
+    font-weight: 600;
+  }
+
+  .rating-track {
+    width: 100%;
+    height: 8px;
+    background: rgba(255, 255, 255, 0.04);
+    border-radius: 4px;
+    overflow: hidden;
+    border: 1px solid rgba(255, 255, 255, 0.02);
+  }
+
+  .rating-fill {
+    width: 0%;
+    height: 100%;
+    background: var(--cyan);
+    border-radius: 4px;
+    transition: width 1.2s cubic-bezier(0.16, 1, 0.3, 1) 0.5s;
+    box-shadow: 0 0 8px var(--cyan-glow);
+  }
+
+  .rating-desc {
+    font-size: 11px;
+    color: var(--text-dim);
+    line-height: 1.4;
+  }
+
+  /* ---------- STATS CARDS GRID ---------- */
+  .stats-grid {
+    display: grid;
+    grid-template-columns: repeat(4, 1fr);
+    gap: 16px;
+  }
+
+  @media (max-width: 1000px) {
+    .stats-grid {
+      grid-template-columns: repeat(2, 1fr);
+    }
+  }
+
+  .stat-card {
+    background: rgba(255, 255, 255, 0.01);
+    border: 1px solid var(--border);
+    border-radius: 12px;
+    padding: 16px;
+    text-align: center;
+    transition: transform 0.3s;
+  }
+  .stat-card:hover {
+    transform: translateY(-2px);
+    border-color: rgba(79, 227, 193, 0.3);
+  }
+
+  .stat-lbl {
+    font-family: var(--font-mono);
+    font-size: 9px;
+    color: var(--text-dim);
+    letter-spacing: 0.12em;
+    margin-bottom: 6px;
+    text-transform: uppercase;
+  }
+
+  .stat-num {
+    font-family: var(--font-sans);
+    font-size: 26px;
+    font-weight: 700;
+    color: var(--cyan);
+  }
+
+  /* ---------- RESPONSE LOG AUDIT ACCORDION ---------- */
+  .accordion-box {
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
+  }
+
+  .accordion-item {
+    background: rgba(255, 255, 255, 0.01);
+    border: 1px solid var(--border);
+    border-radius: 10px;
+    overflow: hidden;
+    transition: all 0.3s;
+  }
+
+  .accordion-item:hover {
+    background: rgba(255, 255, 255, 0.02);
+    border-color: rgba(79, 227, 193, 0.3);
+  }
+
+  .accordion-header {
+    padding: 14px 20px;
+    cursor: pointer;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    user-select: none;
+    font-family: var(--font-sans);
+  }
+
+  .accordion-title-text {
+    font-size: 14px;
+    font-weight: 500;
+    display: flex;
+    align-items: center;
+    gap: 10px;
+  }
+
+  .accordion-q-badge {
+    font-family: var(--font-mono);
+    font-size: 9px;
+    background: rgba(79, 227, 193, 0.1);
+    border: 1px solid rgba(79, 227, 193, 0.2);
+    color: var(--cyan);
+    padding: 2px 6px;
+    border-radius: 4px;
+    min-width: 48px;
+    text-align: center;
+  }
+
+  .accordion-indicator {
+    font-size: 16px;
+    color: var(--text-dim);
+    transition: transform 0.3s;
+  }
+
+  .accordion-body {
+    max-height: 0px;
+    overflow: hidden;
+    transition: max-height 0.4s ease;
+    background: rgba(10, 13, 18, 0.4);
+    border-top: 0 solid transparent;
+  }
+
+  .accordion-content {
+    padding: 18px 20px;
+    font-size: 13.5px;
+    line-height: 1.6;
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
+  }
+
+  .accordion-item.active .accordion-body {
+    max-height: 250px;
+    border-top: 1px solid var(--border);
+  }
+
+  .accordion-item.active .accordion-indicator {
+    transform: rotate(90deg);
+    color: var(--cyan);
+  }
+
+  .accordion-item.active {
+    border-color: rgba(79, 227, 193, 0.3);
+    box-shadow: 0 4px 20px rgba(0,0,0,0.3);
+  }
+
+  .qa-block {
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+  }
+  .qa-label {
+    font-family: var(--font-mono);
+    font-size: 9px;
+    color: var(--text-faint);
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+  }
+  .qa-val {
+    color: var(--text-dim);
+  }
+  .qa-val.question {
+    color: var(--cyan);
+    font-weight: 500;
+  }
+  .qa-val.answer {
+    color: var(--text);
+    font-style: italic;
+    background: rgba(255, 255, 255, 0.01);
+    border-left: 2px solid var(--border);
+    padding-left: 10px;
+  }
+
+  .accordion-stat-row {
+    display: flex;
+    gap: 16px;
+    font-family: var(--font-mono);
+    font-size: 10px;
+    color: var(--text-dim);
+    margin-top: 6px;
+    border-top: 1px dashed rgba(255, 255, 255, 0.05);
+    padding-top: 8px;
+  }
+
+  /* ---------- ACTION ROW ---------- */
+  .action-row {
+    display: flex;
+    justify-content: flex-end;
+    align-items: center;
+    gap: 16px;
+    margin-top: 10px;
+  }
+
+  .btn {
+    padding: 14px 28px;
+    border-radius: 8px;
+    font-family: var(--font-sans);
+    font-weight: 600;
+    font-size: 14px;
+    letter-spacing: 0.05em;
+    cursor: pointer;
+    transition: all 0.3s ease;
+    border: 1px solid transparent;
+    text-decoration: none;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+  }
+
+  .btn-outline {
+    background: transparent;
+    border-color: var(--border);
+    color: var(--text-dim);
+  }
+  .btn-outline:hover {
+    border-color: var(--text-dim);
+    color: var(--text);
+  }
+
+  .btn-primary {
+    background: var(--cyan);
+    color: var(--bg);
+    font-weight: 700;
+    box-shadow: 0 0 25px var(--cyan-glow);
+  }
+  .btn-primary:hover {
+    box-shadow: 0 0 35px var(--cyan);
+    transform: translateY(-1px);
+  }
+  .btn-primary:active {
+    transform: translateY(1px);
+  }
+</style>
+</head>
+<body data-theme="interview">
+
+  <div class="atmosphere">
+    <div class="glow glow--primary"></div>
+    <div class="glow glow--secondary"></div>
+    <div class="grid-floor"></div>
+  </div>
+
+  <div class="app-container">
+    
+    <!-- HEADER -->
+    <header>
+      <div class="logo-block">
+        <span class="logo-title">INTERVIEW RESULTS</span>
+        <span class="logo-sub">PERFORMANCE DIAGNOSTICS DECK</span>
+      </div>
+      <div class="meta-badges">
+        <div class="badge" id="roleBadge">Role: <strong>Software Engineer</strong></div>
+        <div class="badge" id="resumeBadge">Resume: <strong>No File Uploaded</strong></div>
+      </div>
+    </header>
+
+    <!-- CONTENT PANELS -->
+    <main class="results-grid">
+      
+      <!-- LEFT COLUMN: TOTAL SCORE RING & CATEGORY BREAKDOWN -->
+      <section class="results-card">
+        <h2 class="card-headline">GLOBAL SCORE INDEX</h2>
+        
+        <div class="score-wheel-container">
+          <svg class="radial-svg" width="160" height="160">
+            <circle class="radial-bg" cx="80" cy="80" r="70"></circle>
+            <circle class="radial-fill" id="overallFill" cx="80" cy="80" r="70"></circle>
+          </svg>
+          <div class="wheel-score-overlay">
+            <span class="wheel-num" id="overallScoreText">0%</span>
+            <span class="wheel-label">OVERALL</span>
+          </div>
+        </div>
+
+        <div class="category-ratings">
+          <!-- Resume Fit -->
+          <div class="rating-row">
+            <div class="rating-header">
+              <span class="rating-title">Resume Compatibility</span>
+              <span class="rating-score" id="resumeScoreText">0%</span>
+            </div>
+            <div class="rating-track">
+              <div class="rating-fill" id="resumeFill"></div>
+            </div>
+            <div class="rating-desc" id="resumeDesc">Synthesizing file matrix against targeted profile...</div>
+          </div>
+
+          <!-- Answer Quality -->
+          <div class="rating-row">
+            <div class="rating-header">
+              <span class="rating-title">Response Relevance</span>
+              <span class="rating-score" id="answerScoreText">0%</span>
+            </div>
+            <div class="rating-track">
+              <div class="rating-fill" id="answerFill"></div>
+            </div>
+            <div class="rating-desc" id="answerDesc">Evaluating terminology depth, logic structures, and response lengths...</div>
+          </div>
+
+          <!-- Fluency -->
+          <div class="rating-row">
+            <div class="rating-header">
+              <span class="rating-title">Delivery & Fluency</span>
+              <span class="rating-score" id="fluencyScoreText">0%</span>
+            </div>
+            <div class="rating-track">
+              <div class="rating-fill" id="fluencyFill"></div>
+            </div>
+            <div class="rating-desc" id="fluencyDesc">Calculating stutter thresholds, speaking tempo, and hesitation parameters...</div>
+          </div>
+        </div>
+      </section>
+
+      <!-- RIGHT COLUMN: STATS AND QUESTION DETAILED AUDIT -->
+      <div style="display: flex; flex-direction: column; gap: 24px;">
+        
+        <!-- Summary Stats Grid -->
+        <section class="stats-grid">
+          <div class="stat-card">
+            <div class="stat-lbl">speaking time</div>
+            <div class="stat-num" id="statTime">00:00</div>
+          </div>
+          <div class="stat-card">
+            <div class="stat-lbl">words recorded</div>
+            <div class="stat-num" id="statWords">0</div>
+          </div>
+          <div class="stat-card">
+            <div class="stat-lbl">stutter count</div>
+            <div class="stat-num" id="statStutters">0</div>
+          </div>
+          <div class="stat-card">
+            <div class="stat-lbl">avg speech rate</div>
+            <div class="stat-num" id="statWpm">0 wpm</div>
+          </div>
+        </section>
+
+        <!-- Response audit list -->
+        <section class="results-card">
+          <h2 class="card-headline">RESPONSE TRANSCRIPT AUDIT</h2>
+          <div class="accordion-box" id="auditList">
+            <!-- Accordion items injected via Javascript -->
+          </div>
+        </section>
+
+      </div>
+
+    </main>
+
+    <!-- ACTION ROW -->
+    <div class="action-row">
+      <a href="resume.html" class="btn btn-outline">Start New Practice</a>
+      <a href="feedback.html" class="btn btn-primary">Proceed to Detailed Feedback</a>
+    </div>
+
+  </div>
+
+  <script>
+    const mockReport = {
+      role: "Software Engineer",
+      resume: "No File Uploaded",
+      totalTime: "00:00",
+      totalWords: 0,
+      totalStutters: 0,
+      resumeScore: 0,
+      answerScore: 0,
+      fluencyScore: 0,
+      overallScore: 0,
+      answers: []
+    };
+
+    let report = mockReport;
+    const sessionData = sessionStorage.getItem('interview_report');
+    
+    if (sessionData) {
+      report = JSON.parse(sessionData);
+    }
+
+    document.getElementById('roleBadge').innerHTML = `Role: <strong>${report.role}</strong>`;
+    document.getElementById('resumeBadge').innerHTML = `Resume: <strong>${report.resume}</strong>`;
+    
+    document.getElementById('statTime').textContent = report.totalTime;
+    document.getElementById('statWords').textContent = report.totalWords;
+    document.getElementById('statStutters').textContent = report.totalStutters;
+
+    let avgWpm = 0;
+    if (report.totalWords > 0 && report.totalTime && report.totalTime.includes(":")) {
+      const parts = report.totalTime.split(":");
+      const totalMinutes = Math.max(1, (parseInt(parts[0]) * 60 + parseInt(parts[1]))) / 60;
+      avgWpm = Math.round(report.totalWords / totalMinutes);
+    }
+    document.getElementById('statWpm').textContent = `${avgWpm} wpm`;
+
+    // ---------- ANIMATE CIRCULAR PROGRESS GAUGE ----------
+    setTimeout(() => {
+      const circleFill = document.getElementById('overallFill');
+      const textScore = document.getElementById('overallScoreText');
+      const score = report.overallScore || 0;
+
+      const strokeOffset = 440 - (440 * score) / 100;
+      circleFill.style.strokeDashoffset = strokeOffset;
+      
+      let count = 0;
+      const interval = setInterval(() => {
+        if (count >= score) {
+          textScore.textContent = `${score}%`;
+          clearInterval(interval);
+        } else {
+          count++;
+          textScore.textContent = `${count}%`;
+        }
+      }, 15);
+    }, 200);
+
+    // ---------- ANIMATE RATINGS GAUGE BARS ----------
+    setTimeout(() => {
+      document.getElementById('resumeScoreText').textContent = `${report.resumeScore}%`;
+      document.getElementById('resumeFill').style.width = `${report.resumeScore}%`;
+      
+      let resDesc = "Strong resume alignment. Your credentials contain key core keywords matching this profile.";
+      if (report.resumeScore === 0) resDesc = "No resume file was uploaded for this session.";
+      else if (report.resumeScore < 80) resDesc = "Moderate compatibility. Suggest adding more direct technical keywords to stand out.";
+      document.getElementById('resumeDesc').textContent = resDesc;
+
+      document.getElementById('answerScoreText').textContent = `${report.answerScore}%`;
+      document.getElementById('answerFill').style.width = `${report.answerScore}%`;
+      
+      let ansDesc = "Excellent answer quality. You demonstrated logical structuring and highlighted crucial concepts.";
+      if (report.answerScore === 0) ansDesc = "No valid answers were provided during the session.";
+      else if (report.answerScore < 50) ansDesc = "Low answer relevance. Several questions were skipped or lacked expected technical concepts.";
+      else if (report.answerScore < 80) ansDesc = "Good core answers, but some explanations lacked sufficient structural depth or technical terminology.";
+      document.getElementById('answerDesc').textContent = ansDesc;
+
+      document.getElementById('fluencyScoreText').textContent = `${report.fluencyScore}%`;
+      document.getElementById('fluencyFill').style.width = `${report.fluencyScore}%`;
+
+      let fluDesc = "Highly articulate delivery. Filler word counts and speaking tempo were kept under check.";
+      if (report.fluencyScore === 0) fluDesc = "Insufficient speech/text recorded to evaluate vocal fluency.";
+      else if (report.fluencyScore < 80) fluDesc = "Low participation or occasional filler words detected. Practice pacing your speech.";
+      document.getElementById('fluencyDesc').textContent = fluDesc;
+    }, 400);
+
+    // ---------- RENDER DETAILED TRANSCRIPT AUDIT ACCORDION ----------
+    const auditListContainer = document.getElementById('auditList');
+
+    report.answers.forEach((ans, index) => {
+      const qScore = typeof ans.score === 'number' ? ans.score : 0;
+      const item = document.createElement('div');
+      item.className = 'accordion-item';
+      if (index === 0) item.classList.add('active');
+
+      item.innerHTML = `
+        <div class="accordion-header">
+          <div class="accordion-title-text">
+            <span class="accordion-q-badge">${ans.round}</span>
+            <span>Question ${index + 1}</span>
+          </div>
+          <span class="accordion-indicator">➔</span>
+        </div>
+        <div class="accordion-body">
+          <div class="accordion-content">
+            <div class="qa-block">
+              <span class="qa-label">question asked</span>
+              <span class="qa-val question">${ans.question}</span>
+            </div>
+            <div class="qa-block">
+              <span class="qa-label">your transcribed response</span>
+              <span class="qa-val answer">${ans.answer}</span>
+            </div>
+            <div class="accordion-stat-row">
+              <span>Question Score: <strong style="color: ${qScore < 40 ? 'var(--danger)' : 'var(--cyan)'}">${qScore}%</strong></span>
+              <span>Words: <strong>${ans.words}</strong></span>
+              <span>Stutters / Filler words: <strong style="color: ${ans.stutters > 2 ? 'var(--amber)' : 'var(--cyan)'}">${ans.stutters}</strong></span>
+            </div>
+          </div>
+        </div>
+      `;
+      auditListContainer.appendChild(item);
+    });
+
+    auditListContainer.addEventListener('click', (e) => {
+      const header = e.target.closest('.accordion-header');
+      if (!header) return;
+
+      const item = header.parentElement;
+      const isActive = item.classList.contains('active');
+
+      const allItems = auditListContainer.querySelectorAll('.accordion-item');
+      allItems.forEach(i => i.classList.remove('active'));
+
+      if (!isActive) {
+        item.classList.add('active');
+      }
+    });
+  </script>
+</body>
+</html>

@@ -1,0 +1,840 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>AI Interviewer — Detailed Feedback & Roadmap</title>
+<style>
+  @import url('https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@300;400;500;600;700&family=JetBrains+Mono:wght@400;500;600&family=Inter:wght@400;500;600&display=swap');
+
+  :root {
+    --bg: #0a0d12;
+    --panel: rgba(18, 22, 31, 0.65);
+    --panel-2: #161b26;
+    --border: rgba(79, 227, 193, 0.18);
+    --border-strong: rgba(79, 227, 193, 0.4);
+    --text: #e7ebf0;
+    --text-dim: #8891a0;
+    --text-faint: #4d5561;
+    --cyan: #4fe3c1;
+    --cyan-glow: rgba(79, 227, 193, 0.35);
+    --amber: #ffb454;
+    --amber-glow: rgba(255, 180, 84, 0.35);
+    --violet: #6c6ff5;
+    --violet-glow: rgba(108, 111, 245, 0.35);
+    --danger: #ff6b6b;
+    --radius: 16px;
+    --theme-color: var(--cyan);
+    --font-sans: 'Space Grotesk', sans-serif;
+    --font-mono: 'JetBrains Mono', monospace;
+  }
+
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  html, body {
+    height: 100%;
+    background: var(--bg);
+    color: var(--text);
+    font-family: 'Inter', sans-serif;
+    overflow-x: hidden;
+  }
+
+  /* ---------- BACKGROUND ENVIRONMENT ---------- */
+  .atmosphere { position: fixed; inset: 0; z-index: 0; overflow: hidden; pointer-events: none; }
+  .glow { position: absolute; border-radius: 50%; filter: blur(140px); opacity: .18; transition: all 0.8s ease; }
+  .glow--primary { width: 600px; height: 600px; background: var(--cyan); top: -150px; left: -150px; }
+  .glow--secondary { width: 500px; height: 500px; background: var(--violet); bottom: -150px; right: -100px; }
+
+  .grid-floor { position: absolute; inset: 0; perspective: 600px; perspective-origin: 50% 20%; }
+  .grid-floor::before {
+    content: ""; position: absolute; left: -50%; right: -50%; bottom: -10%; height: 160%;
+    background-image: linear-gradient(rgba(255,255,255,0.015) 1px, transparent 1px), linear-gradient(90deg, rgba(255,255,255,0.015) 1px, transparent 1px);
+    background-size: 56px 56px; transform: rotateX(75deg); transform-origin: bottom;
+    animation: gridDrift 25s linear infinite;
+    mask-image: linear-gradient(to top, rgba(0,0,0,0.8), transparent 75%);
+    -webkit-mask-image: linear-gradient(to top, rgba(0,0,0,0.8), transparent 75%);
+  }
+  @keyframes gridDrift { from { background-position: 0 0; } to { background-position: 0 56px; } }
+
+  /* ---------- MAIN WRAPPER ---------- */
+  .app-container {
+    position: relative;
+    z-index: 10;
+    max-width: 1100px;
+    margin: 0 auto;
+    padding: 30px 20px;
+    display: flex;
+    flex-direction: column;
+    gap: 24px;
+    min-height: 100vh;
+  }
+
+  /* ---------- HEADER ---------- */
+  header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    background: var(--panel);
+    border: 1px solid var(--border);
+    border-radius: var(--radius);
+    padding: 16px 28px;
+    backdrop-filter: blur(20px);
+    -webkit-backdrop-filter: blur(20px);
+  }
+
+  .logo-block {
+    display: flex;
+    flex-direction: column;
+  }
+  .logo-title {
+    font-family: var(--font-sans);
+    font-size: 20px;
+    font-weight: 700;
+    letter-spacing: 0.05em;
+    color: var(--cyan);
+  }
+  .logo-sub {
+    font-family: var(--font-mono);
+    font-size: 10px;
+    color: var(--text-dim);
+    letter-spacing: 0.1em;
+  }
+
+  .badge {
+    background: rgba(255, 255, 255, 0.02);
+    border: 1px solid var(--border);
+    padding: 6px 12px;
+    border-radius: 8px;
+    font-size: 12px;
+    font-family: var(--font-sans);
+  }
+  .badge strong {
+    color: var(--cyan);
+  }
+
+  /* ---------- SPLIT 2-COLUMN FEEDBACK LAYOUT ---------- */
+  .feedback-layout {
+    display: grid;
+    grid-template-columns: 1.2fr 0.8fr;
+    gap: 24px;
+  }
+
+  @media (max-width: 900px) {
+    .feedback-layout {
+      grid-template-columns: 1fr;
+    }
+  }
+
+  .card {
+    background: var(--panel);
+    border: 1px solid var(--border);
+    border-radius: var(--radius);
+    padding: 26px;
+    backdrop-filter: blur(20px);
+    -webkit-backdrop-filter: blur(20px);
+    box-shadow: 0 20px 60px rgba(0,0,0,0.5);
+    display: flex;
+    flex-direction: column;
+    gap: 20px;
+  }
+
+  .card-title {
+    font-family: var(--font-sans);
+    font-size: 18px;
+    font-weight: 600;
+    color: var(--cyan);
+    border-bottom: 1px solid var(--border);
+    padding-bottom: 12px;
+    letter-spacing: 0.04em;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+  }
+
+  .card-subtext {
+    font-size: 13.5px;
+    color: var(--text-dim);
+    line-height: 1.6;
+  }
+
+  /* ---------- STRENGTHS AND LIMITATIONS LIST ---------- */
+  .critique-section {
+    display: flex;
+    flex-direction: column;
+    gap: 16px;
+  }
+
+  .critique-block {
+    display: flex;
+    gap: 14px;
+    padding: 14px;
+    border-radius: 8px;
+    background: rgba(255, 255, 255, 0.01);
+    border: 1px solid var(--border);
+  }
+
+  .critique-block.strength {
+    border-left: 3px solid var(--cyan);
+  }
+  .critique-block.weakness {
+    border-left: 3px solid var(--amber);
+  }
+
+  .critique-icon {
+    font-size: 20px;
+    line-height: 1.1;
+  }
+
+  .critique-info {
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+  }
+
+  .critique-title {
+    font-family: var(--font-sans);
+    font-size: 14px;
+    font-weight: 600;
+    color: var(--text);
+  }
+
+  .critique-text {
+    font-size: 12.5px;
+    color: var(--text-dim);
+    line-height: 1.5;
+  }
+
+  /* ---------- SKILLS ROADMAP ---------- */
+  .roadmap-list {
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
+  }
+
+  .roadmap-item {
+    padding: 14px 18px;
+    border-radius: 8px;
+    border: 1px solid var(--border);
+    background: rgba(10, 13, 18, 0.4);
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    transition: border-color 0.3s;
+    text-decoration: none;
+    color: inherit;
+  }
+  .roadmap-item:hover {
+    border-color: rgba(79, 227, 193, 0.4);
+    background: rgba(255, 255, 255, 0.02);
+  }
+
+  .roadmap-meta {
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+  }
+  .roadmap-title {
+    font-family: var(--font-sans);
+    font-size: 14px;
+    font-weight: 500;
+    color: var(--text);
+  }
+  .roadmap-tag {
+    font-family: var(--font-mono);
+    font-size: 9px;
+    color: var(--cyan);
+    letter-spacing: 0.05em;
+  }
+  .roadmap-arrow {
+    color: var(--cyan);
+    font-size: 16px;
+    transition: transform 0.2s;
+  }
+  .roadmap-item:hover .roadmap-arrow {
+    transform: translateX(4px);
+  }
+
+  /* ---------- FEEDBACK / RATING FORM ---------- */
+  .form-group {
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+  }
+  .form-label {
+    font-family: var(--font-mono);
+    font-size: 10.5px;
+    color: var(--text-dim);
+    letter-spacing: 0.1em;
+  }
+  .form-input {
+    background: rgba(10, 13, 18, 0.4);
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    padding: 10px 14px;
+    color: var(--text);
+    font-family: inherit;
+    font-size: 13.5px;
+    outline: none;
+    transition: border-color 0.3s;
+  }
+  .form-input:focus {
+    border-color: var(--cyan-glow);
+  }
+  .form-textarea {
+    resize: none;
+    min-height: 80px;
+  }
+
+  /* Star Rating System */
+  .stars-container {
+    display: flex;
+    gap: 8px;
+    font-size: 26px;
+    color: var(--text-faint);
+    cursor: pointer;
+    user-select: none;
+    margin: 4px 0 10px;
+  }
+  .star {
+    transition: color 0.2s, transform 0.2s;
+  }
+  .star:hover {
+    transform: scale(1.15);
+  }
+  .star.active {
+    color: var(--amber);
+    text-shadow: 0 0 10px var(--amber-glow);
+  }
+
+  /* ---------- SUCCESS MODAL ---------- */
+  .modal-overlay {
+    position: fixed;
+    inset: 0;
+    z-index: 100;
+    background: rgba(10, 13, 18, 0.85);
+    backdrop-filter: blur(8px);
+    display: none;
+    align-items: center;
+    justify-content: center;
+    opacity: 0;
+    transition: opacity 0.4s ease;
+  }
+  .modal-overlay.active {
+    display: flex;
+    opacity: 1;
+  }
+
+  .modal-card {
+    background: var(--panel-2);
+    border: 1px solid var(--border-strong);
+    box-shadow: 0 0 40px rgba(79, 227, 193, 0.25);
+    border-radius: 16px;
+    width: 90%;
+    max-width: 400px;
+    padding: 30px;
+    text-align: center;
+    transform: scale(0.9);
+    transition: transform 0.4s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+  }
+  .modal-overlay.active .modal-card {
+    transform: scale(1);
+  }
+
+  .modal-icon {
+    font-size: 44px;
+    color: var(--cyan);
+    margin-bottom: 16px;
+  }
+  .modal-title {
+    font-family: var(--font-sans);
+    font-size: 20px;
+    font-weight: 700;
+    margin-bottom: 8px;
+  }
+  .modal-text {
+    font-size: 13px;
+    color: var(--text-dim);
+    line-height: 1.5;
+    margin-bottom: 24px;
+  }
+
+  /* ---------- ACTIONS ROW ---------- */
+  .actions-row {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-top: 10px;
+  }
+  .left-actions, .right-actions {
+    display: flex;
+    gap: 12px;
+  }
+
+  .btn {
+    padding: 12px 24px;
+    border-radius: 8px;
+    font-family: var(--font-sans);
+    font-weight: 600;
+    font-size: 14px;
+    letter-spacing: 0.05em;
+    cursor: pointer;
+    transition: all 0.3s ease;
+    border: 1px solid transparent;
+    text-decoration: none;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    gap: 8px;
+  }
+
+  .btn-outline {
+    background: transparent;
+    border-color: var(--border);
+    color: var(--text-dim);
+  }
+  .btn-outline:hover {
+    border-color: var(--text-dim);
+    color: var(--text);
+  }
+
+  .btn-primary {
+    background: var(--cyan);
+    color: var(--bg);
+    font-weight: 700;
+    box-shadow: 0 0 20px var(--cyan-glow);
+  }
+  .btn-primary:hover {
+    box-shadow: 0 0 30px var(--cyan);
+    transform: translateY(-1px);
+  }
+  .btn-primary:active {
+    transform: translateY(1px);
+  }
+
+  .btn-amber {
+    background: var(--amber);
+    color: var(--bg);
+    font-weight: 700;
+    box-shadow: 0 0 20px var(--amber-glow);
+  }
+  .btn-amber:hover {
+    box-shadow: 0 0 30px var(--amber);
+    transform: translateY(-1px);
+  }
+
+  /* ---------- PRINT MEDIA CONFIG ---------- */
+  @media print {
+    body {
+      background: #ffffff !important;
+      color: #000000 !important;
+      font-family: 'Inter', sans-serif !important;
+    }
+    .atmosphere, header, .stars-container, .form-group, #feedbackForm, .actions-row, .modal-overlay {
+      display: none !important;
+    }
+    .app-container {
+      max-width: 100% !important;
+      padding: 0 !important;
+      margin: 0 !important;
+    }
+    .feedback-layout {
+      grid-template-columns: 1fr !important;
+      gap: 20px !important;
+    }
+    .card {
+      background: none !important;
+      border: 1px solid #cccccc !important;
+      border-radius: 8px !important;
+      padding: 20px !important;
+      box-shadow: none !important;
+      color: #000000 !important;
+      page-break-inside: avoid;
+    }
+    .card-title {
+      color: #000000 !important;
+      border-bottom: 2px solid #333333 !important;
+      font-size: 16px !important;
+    }
+    .critique-block {
+      border: 1px solid #dddddd !important;
+      background: none !important;
+    }
+    .critique-block.strength { border-left: 4px solid #00aa88 !important; }
+    .critique-block.weakness { border-left: 4px solid #dd8800 !important; }
+    .critique-title { color: #000000 !important; }
+    .critique-text, .card-subtext { color: #444444 !important; }
+    .roadmap-list { display: none !important; }
+    
+    .print-header {
+      display: block !important;
+      border-bottom: 2px solid #000000;
+      padding-bottom: 10px;
+      margin-bottom: 20px;
+    }
+    .print-header h1 {
+      font-size: 22px;
+      margin-bottom: 4px;
+    }
+    .print-header p {
+      font-size: 12px;
+      color: #555555;
+    }
+  }
+
+  .print-header {
+    display: none;
+  }
+</style>
+</head>
+<body data-theme="interview">
+
+  <div class="atmosphere">
+    <div class="glow glow--primary"></div>
+    <div class="glow glow--secondary"></div>
+    <div class="grid-floor"></div>
+  </div>
+
+  <!-- PRINT-ONLY HEADER -->
+  <div class="print-header">
+    <h1>AI INTERVIEW PLATFORM - PERFORMANCE REPORT</h1>
+    <p id="printMeta">Role: Software Engineer | Date: October 2026</p>
+  </div>
+
+  <div class="app-container">
+    
+    <!-- HEADER -->
+    <header>
+      <div class="logo-block">
+        <span class="logo-title">FEEDBACK & ROADMAP</span>
+        <span class="logo-sub">PERSONAL SKILLS COCKPIT</span>
+      </div>
+      <div class="badge" id="roleBadge">Role: <strong>Software Engineer</strong></div>
+    </header>
+
+    <!-- CONTENT LAYOUT -->
+    <main class="feedback-layout">
+      
+      <!-- LEFT COLUMN: CRITIQUE & ROADMAP -->
+      <div style="display: flex; flex-direction: column; gap: 24px;">
+        
+        <section class="card">
+          <h2 class="card-title">
+            <span>PERFORMANCE DEBRIEF</span>
+            <span id="overallBadge" style="font-size: 12px; background: rgba(79,227,193,0.1); border: 1px solid var(--border-strong); padding: 4px 10px; border-radius: 4px; color: var(--cyan);">Score: 0%</span>
+          </h2>
+          <p class="card-subtext" id="debriefText">Analyzing your response recordings... Here is a breakdown of what went well and what you can optimize for future interviews.</p>
+          
+          <div class="critique-section" id="critiqueSection"></div>
+        </section>
+
+        <section class="card" id="roadmapCard">
+          <h2 class="card-title">RECOMMENDED PREPARATION ROADMAP</h2>
+          <p class="card-subtext">Click on any recommendation below to view curated learning material or practice questions to bridge your performance gaps.</p>
+          
+          <div class="roadmap-list" id="roadmapList"></div>
+        </section>
+
+      </div>
+
+      <!-- RIGHT COLUMN: FEEDBACK FORM -->
+      <section class="card" style="align-self: flex-start;">
+        <h2 class="card-title">PLATFORM REVIEW</h2>
+        <p class="card-subtext">This platform is fully free. Please rate your virtual interview experience to help us improve the agent for others!</p>
+        
+        <form id="feedbackForm" novalidate>
+          <div class="form-group">
+            <label class="form-label">INTERVIEW RATING</label>
+            <div class="stars-container" id="starsContainer">
+              <span class="star" data-value="1">★</span>
+              <span class="star" data-value="2">★</span>
+              <span class="star" data-value="3">★</span>
+              <span class="star" data-value="4">★</span>
+              <span class="star" data-value="5">★</span>
+            </div>
+          </div>
+
+          <div class="form-group" style="margin-bottom: 12px;">
+            <label class="form-label" for="userName">YOUR NAME</label>
+            <input type="text" class="form-input" id="userName" placeholder="John Doe" required>
+          </div>
+
+          <div class="form-group" style="margin-bottom: 12px;">
+            <label class="form-label" for="userEmail">EMAIL ADDRESS</label>
+            <input type="email" class="form-input" id="userEmail" placeholder="john@example.com" required>
+          </div>
+
+          <div class="form-group" style="margin-bottom: 16px;">
+            <label class="form-label" for="userComments">OBSERVATIONS & FEEDBACK</label>
+            <textarea class="form-input form-textarea" id="userComments" placeholder="Share your experience (e.g., questions quality, audio syncing, speech engine clarity)..." required></textarea>
+          </div>
+
+          <button type="submit" class="btn btn-primary" style="width: 100%;">Submit Feedback</button>
+        </form>
+      </section>
+
+    </main>
+
+    <!-- ACTION ROW -->
+    <div class="actions-row">
+      <div class="left-actions">
+        <a href="resume.html" class="btn btn-outline">Back to Upload</a>
+        <a href="results.html" class="btn btn-outline">Back to Scores</a>
+      </div>
+      <div class="right-actions">
+        <button class="btn btn-outline" id="btnPrint">
+          <span>📄</span> Export Report Card (PDF)
+        </button>
+        <a href="resume.html" class="btn btn-amber">Practice Again</a>
+      </div>
+    </div>
+
+  </div>
+
+  <!-- SUCCESS DIALOGUE MODAL -->
+  <div class="modal-overlay" id="modalOverlay">
+    <div class="modal-card">
+      <div class="modal-icon">✓</div>
+      <h3 class="modal-title">Feedback Submitted</h3>
+      <p class="modal-text">Thank you for rating your AI Interview. Your insights help us refine Aria's speech models, question banks, and latency profiles!</p>
+      <button class="btn btn-primary" id="btnModalClose" style="min-width: 120px;">Done</button>
+    </div>
+  </div>
+
+  <script>
+    const mockReport = {
+      role: "Software Engineer",
+      resume: "No File Uploaded",
+      totalTime: "00:00",
+      totalWords: 0,
+      totalStutters: 0,
+      resumeScore: 0,
+      answerScore: 0,
+      fluencyScore: 0,
+      overallScore: 0
+    };
+
+    let report = mockReport;
+    const sessionData = sessionStorage.getItem('interview_report');
+    if (sessionData) {
+      report = JSON.parse(sessionData);
+    }
+
+    document.getElementById('roleBadge').innerHTML = `Role: <strong>${report.role}</strong>`;
+    document.getElementById('overallBadge').textContent = `Score: ${report.overallScore}%`;
+    
+    const today = new Date().toLocaleDateString('en-US', { year: 'numeric', month: 'long', day: 'numeric' });
+    document.getElementById('printMeta').textContent = `Role: ${report.role} | Score Card: ${report.overallScore}% | Date: ${today}`;
+
+    const critiqueSection = document.getElementById('critiqueSection');
+    const strengths = [];
+    const weaknesses = [];
+
+    if (report.answerScore >= 75) {
+      strengths.push({
+        title: "High Technical Relevance",
+        text: "Your responses effectively incorporated core conceptual frameworks and key industry vocabulary, demonstrating strong domain understanding."
+      });
+    } else {
+      weaknesses.push({
+        title: "Response Depth & Concept Coverage",
+        text: "Several questions were skipped or lacked domain-specific technical terms. Practice elaborating on core parameters and concrete examples."
+      });
+    }
+
+    if (report.fluencyScore >= 75) {
+      strengths.push({
+        title: "Excellent Vocal Pace",
+        text: "You maintained steady participation and clear delivery with minimal filler words."
+      });
+    } else {
+      weaknesses.push({
+        title: "Speech Fluency & Participation",
+        text: `Ensure you answer all 10 questions in complete sentences and minimize filler terms (detected: ${report.totalStutters}).`
+      });
+    }
+
+    if (report.resumeScore >= 75) {
+      strengths.push({
+        title: "Resume-Role Alignment",
+        text: "Your credentials match up well with standard market profiles for this role."
+      });
+    } else {
+      weaknesses.push({
+        title: "Resume Upload / Keyword Gaps",
+        text: "Make sure to upload your resume file and include direct technical skills that mirror job postings."
+      });
+    }
+
+    strengths.forEach(s => {
+      critiqueSection.innerHTML += `
+        <div class="critique-block strength">
+          <div class="critique-icon">🟢</div>
+          <div class="critique-info">
+            <h3 class="critique-title">${s.title}</h3>
+            <p class="critique-text">${s.text}</p>
+          </div>
+        </div>
+      `;
+    });
+
+    weaknesses.forEach(w => {
+      critiqueSection.innerHTML += `
+        <div class="critique-block weakness">
+          <div class="critique-icon">🟡</div>
+          <div class="critique-info">
+            <h3 class="critique-title">${w.title}</h3>
+            <p class="critique-text">${w.text}</p>
+          </div>
+        </div>
+      `;
+    });
+
+    const roadmapList = document.getElementById('roadmapList');
+    const roadmaps = {
+      "Software Engineer": [
+        { title: "System Design Primer Guide", tag: "ARCHITECTURE", url: "https://github.com/donnemartin/system-design-primer" },
+        { title: "Visual Guide to Data Structures & Algorithms", tag: "ALGORITHMS", url: "https://visualgo.net/" }
+      ],
+      "Systems Engineer": [
+        { title: "TCP/IP Protocol Suite & Network Layer Maps", tag: "NETWORKING", url: "https://www.wireshark.org/docs/" },
+        { title: "Site Reliability Engineering (SRE) Handbook", tag: "OPERATIONS", url: "https://sre.google/books/" }
+      ],
+      "Full Stack Developer": [
+        { title: "Full Stack Open — Modern Web Development", tag: "FULL STACK", url: "https://fullstackopen.com/en/" },
+        { title: "MDN Web Docs — HTTP, CORS & Web Security", tag: "WEB CORE", url: "https://developer.mozilla.org/" }
+      ],
+      "Data Analyst / AI Engineer": [
+        { title: "Google Machine Learning Crash Course", tag: "AI / ML", url: "https://developers.google.com/machine-learning/crash-course" },
+        { title: "Kaggle Data Analysis & SQL Tracks", tag: "DATA ANALYTICS", url: "https://www.kaggle.com/learn" }
+      ],
+      "Embedded Systems & IoT Engineer": [
+        { title: "ESP32 & FreeRTOS Official Documentation", tag: "IOT / RTOS", url: "https://docs.espressif.com/" },
+        { title: "Embedded Artistry — Embedded C & Architecture", tag: "FIRMWARE", url: "https://embeddedartistry.com/" }
+      ],
+      "VLSI Design Engineer": [
+        { title: "ASIC World — Verilog, SystemVerilog & Digital Design", tag: "RTL DESIGN", url: "https://www.asic-world.com/" },
+        { title: "VLSI Verify — STA, CDC & Physical Design", tag: "VERIFICATION", url: "https://vlsiverify.com/" }
+      ],
+      "Mechanical Design Engineer (CAD)": [
+        { title: "Engineers Edge — GD&T & Tolerance Stack-Up", tag: "GD&T / CAD", url: "https://www.engineersedge.com/" },
+        { title: "Ansys Innovation Courses — FEA & Solid Mechanics", tag: "SIMULATION", url: "https://courses.ansys.com/" }
+      ],
+      "Graduate Engineer Trainee (GET)": [
+        { title: "ASQ — Lean Six Sigma, 5S & Root Cause Analysis", tag: "QUALITY & OPS", url: "https://asq.org/quality-resources" },
+        { title: "IEEE Spectrum — Core Engineering Trends", tag: "ENGINEERING", url: "https://spectrum.ieee.org/" }
+      ],
+      "Junior Accountant / Audit Assistant": [
+        { title: "ICAI / Accounting Standards & Audit Resources", tag: "ACCOUNTING", url: "https://www.icai.org/" },
+        { title: "ClearTax — GST, TDS & Reconciliation Guides", tag: "TAXATION", url: "https://cleartax.in/s/gst-law-goods-and-services-tax" }
+      ],
+      "Financial Analyst / Operations Associate": [
+        { title: "Corporate Finance Valuation Masterclass", tag: "FINANCE", url: "https://corporatefinanceinstitute.com/resources/" },
+        { title: "Advanced Financial & DCF Modeling in Excel", tag: "MODELING", url: "https://www.wallstreetprep.com/" }
+      ],
+      "HR Executive / Recruiter": [
+        { title: "Modern Talent Acquisition Analytics & Metrics", tag: "ANALYTICS", url: "https://www.shrm.org/resourcesandtools/" },
+        { title: "Conflict Resolution & Workplace Restructuring Patterns", tag: "MANAGEMENT", url: "https://www.pon.harvard.edu/category/blog/" }
+      ],
+      "Data Entry Operator / MIS Executive": [
+        { title: "Microsoft Excel — Pivot Tables, XLOOKUP & Power Query", tag: "MIS / EXCEL", url: "https://support.microsoft.com/en-us/excel" },
+        { title: "ExcelJet — Formula & Automation Reference", tag: "SPREADSHEETS", url: "https://exceljet.net/" }
+      ],
+      "Technical Support Engineer": [
+        { title: "Microsoft Learn — Active Directory & Windows Troubleshooting", tag: "IT SUPPORT", url: "https://learn.microsoft.com/" },
+        { title: "CompTIA A+ & Network+ Study Guides", tag: "NETWORKING", url: "https://www.comptia.org/" }
+      ],
+      "Digital Marketing & SEO Executive": [
+        { title: "Google Search Central — SEO Fundamentals", tag: "SEO", url: "https://developers.google.com/search/docs" },
+        { title: "Google Skillshop — GA4 & Google Ads Certification", tag: "PERFORMANCE ADS", url: "https://skillshop.withgoogle.com/" }
+      ]
+    };
+
+    const activeRoadmap = roadmaps[report.role] || roadmaps["Software Engineer"];
+    activeRoadmap.forEach(item => {
+      roadmapList.innerHTML += `
+        <a href="${item.url}" target="_blank" class="roadmap-item">
+          <div class="roadmap-meta">
+            <span class="roadmap-tag">${item.tag}</span>
+            <span class="roadmap-title">${item.title}</span>
+          </div>
+          <span class="roadmap-arrow">➔</span>
+        </a>
+      `;
+    });
+
+    const starsContainer = document.getElementById('starsContainer');
+    const stars = starsContainer.querySelectorAll('.star');
+    let selectedRating = 0;
+
+    starsContainer.addEventListener('mouseover', (e) => {
+      const star = e.target.closest('.star');
+      if (!star) return;
+      const val = parseInt(star.getAttribute('data-value'));
+      highlightStars(val);
+    });
+
+    starsContainer.addEventListener('mouseleave', () => {
+      highlightStars(selectedRating);
+    });
+
+    starsContainer.addEventListener('click', (e) => {
+      const star = e.target.closest('.star');
+      if (!star) return;
+      selectedRating = parseInt(star.getAttribute('data-value'));
+      highlightStars(selectedRating);
+    });
+
+    function highlightStars(count) {
+      stars.forEach((s, idx) => {
+        if (idx < count) {
+          s.classList.add('active');
+        } else {
+          s.classList.remove('active');
+        }
+      });
+    }
+
+    const feedbackForm = document.getElementById('feedbackForm');
+    const modalOverlay = document.getElementById('modalOverlay');
+    const btnModalClose = document.getElementById('btnModalClose');
+
+    feedbackForm.addEventListener('submit', async (e) => {
+      e.preventDefault();
+      
+      const name = document.getElementById('userName').value.trim();
+      const email = document.getElementById('userEmail').value.trim();
+      const comments = document.getElementById('userComments').value.trim();
+
+      if (!selectedRating) {
+        alert("Please select an interview rating (stars) first!");
+        return;
+      }
+      if (!name || !email || !comments) {
+        alert("Please fill out all the fields before submitting!");
+        return;
+      }
+
+      try {
+        await fetch('/api/feedback/submit', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ rating: selectedRating, name, email, comments })
+        });
+      } catch (err) {}
+
+      modalOverlay.classList.add('active');
+    });
+
+    btnModalClose.addEventListener('click', () => {
+      modalOverlay.classList.remove('active');
+      feedbackForm.reset();
+      selectedRating = 0;
+      highlightStars(0);
+    });
+
+    const btnPrint = document.getElementById('btnPrint');
+    btnPrint.addEventListener('click', () => {
+      window.print();
+    });
+  </script>
+</body>
+</html>

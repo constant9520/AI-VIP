@@ -1,0 +1,338 @@
+{
+  "users": [],
+  "resumes": [
+    {
+      "id": "99db13ac-668b-42fa-829d-df5fc3671b2e",
+      "filename": "1792517636383-Sri Dhaniesh resume.pdf",
+      "originalName": "Sri Dhaniesh resume.pdf",
+      "filepath": "C:\\Users\\WELCOME\\OneDrive\\Documents\\Desktop\\interview\\uploads\\1792517636383-Sri Dhaniesh resume.pdf",
+      "uploadedAt": "2026-10-20T17:33:56.407Z"
+    },
+    {
+      "id": "26fe2888-0e9f-4e74-bf69-d158c8153d0e",
+      "filename": "1792992440344-Sri Dhaniesh resume.docx",
+      "originalName": "Sri Dhaniesh resume.docx",
+      "filepath": "C:\\Users\\WELCOME\\OneDrive\\Documents\\Desktop\\interview\\uploads\\1792992440344-Sri Dhaniesh resume.docx",
+      "uploadedAt": "2026-10-26T05:27:20.357Z"
+    },
+    {
+      "id": "346530a8-2958-4848-8ee0-aa37793bb213",
+      "filename": "1792999309589-Sri Dhaniesh resume.docx",
+      "originalName": "Sri Dhaniesh resume.docx",
+      "filepath": "C:\\Users\\WELCOME\\OneDrive\\Documents\\Desktop\\interview\\uploads\\1792999309589-Sri Dhaniesh resume.docx",
+      "uploadedAt": "2026-10-26T07:21:49.599Z"
+    }
+  ],
+  "reports": [
+    {
+      "id": "eeaaa843-f767-4efb-8f92-44bc556c9531",
+      "role": "Software Engineer",
+      "resume": "Sri Dhaniesh resume.docx",
+      "totalTime": "00:50",
+      "totalWords": 3,
+      "totalStutters": 0,
+      "resumeScore": 85,
+      "answerScore": 4,
+      "fluencyScore": 10,
+      "overallScore": 15,
+      "answers": [
+        {
+          "question": "Can you explain the difference between a stack and a queue data structure, and give a real-world example of each?",
+          "answer": "LIFO and FIFO",
+          "round": "Easy",
+          "stutters": 0,
+          "words": 3,
+          "score": 43
+        },
+        {
+          "question": "What is the purpose of version control systems like Git, and how do they help developer collaboration?",
+          "answer": "[No speech or input provided]",
+          "round": "Easy",
+          "stutters": 0,
+          "words": 0,
+          "score": 0
+        },
+        {
+          "question": "Explain the core concept of Object-Oriented Programming and describe its four main pillars.",
+          "answer": "[No speech or input provided]",
+          "round": "Easy",
+          "stutters": 0,
+          "words": 0,
+          "score": 0
+        },
+        {
+          "question": "How do relational databases utilize indexes to speed up lookup queries? What are the trade-offs of having too many indexes?",
+          "answer": "[No speech or input provided]",
+          "round": "Medium",
+          "stutters": 0,
+          "words": 0,
+          "score": 0
+        },
+        {
+          "question": "Describe what a RESTful API is and explain what HTTP methods are commonly used to execute CRUD operations.",
+          "answer": "[No speech or input provided]",
+          "round": "Medium",
+          "stutters": 0,
+          "words": 0,
+          "score": 0
+        },
+        {
+          "question": "What is asynchronous programming? Explain how the JavaScript Event Loop coordinates execution.",
+          "answer": "[No speech or input provided]",
+          "round": "Medium",
+          "stutters": 0,
+          "words": 0,
+          "score": 0
+        },
+        {
+          "question": "How would you design a highly available, fault-tolerant system to handle millions of real-time chat notifications per second?",
+          "answer": "[No speech or input provided]",
+          "round": "Hard",
+          "stutters": 0,
+          "words": 0,
+          "score": 0
+        },
+        {
+          "question": "Explain the architectural differences between vertical and horizontal scaling, and when you would choose one over the other.",
+          "answer": "[No speech or input provided]",
+          "round": "Hard",
+          "stutters": 0,
+          "words": 0,
+          "score": 0
+        },
+        {
+          "question": "What are memory leaks? How do you profile and detect them in modern development stacks?",
+          "answer": "[No speech or input provided]",
+          "round": "Hard",
+          "stutters": 0,
+          "words": 0,
+          "score": 0
+        },
+        {
+          "question": "Why should we hire you for this role, and how do your skills and values make you the ideal candidate?",
+          "answer": "[No speech or input provided]",
+          "round": "Common",
+          "stutters": 0,
+          "words": 0,
+          "score": 0
+        }
+      ],
+      "createdAt": "2026-10-26T07:22:58.775Z"
+    },
+    {
+      "id": "127c467e-cfcb-4d14-ab03-6430afd46ddc",
+      "role": "Software Engineer",
+      "resume": "Sri Dhaniesh resume.docx",
+      "totalTime": "00:50",
+      "totalWords": 3,
+      "totalStutters": 0,
+      "resumeScore": 85,
+      "answerScore": 4,
+      "fluencyScore": 10,
+      "overallScore": 15,
+      "answers": [
+        {
+          "question": "Can you explain the difference between a stack and a queue data structure, and give a real-world example of each?",
+          "answer": "LIFO and FIFO",
+          "round": "Easy",
+          "stutters": 0,
+          "words": 3,
+          "score": 43
+        },
+        {
+          "question": "What is the purpose of version control systems like Git, and how do they help developer collaboration?",
+          "answer": "[No speech or input provided]",
+          "round": "Easy",
+          "stutters": 0,
+          "words": 0,
+          "score": 0
+        },
+        {
+          "question": "Explain the core concept of Object-Oriented Programming and describe its four main pillars.",
+          "answer": "[No speech or input provided]",
+          "round": "Easy",
+          "stutters": 0,
+          "words": 0,
+          "score": 0
+        },
+        {
+          "question": "How do relational databases utilize indexes to speed up lookup queries? What are the trade-offs of having too many indexes?",
+          "answer": "[No speech or input provided]",
+          "round": "Medium",
+          "stutters": 0,
+          "words": 0,
+          "score": 0
+        },
+        {
+          "question": "Describe what a RESTful API is and explain what HTTP methods are commonly used to execute CRUD operations.",
+          "answer": "[No speech or input provided]",
+          "round": "Medium",
+          "stutters": 0,
+          "words": 0,
+          "score": 0
+        },
+        {
+          "question": "What is asynchronous programming? Explain how the JavaScript Event Loop coordinates execution.",
+          "answer": "[No speech or input provided]",
+          "round": "Medium",
+          "stutters": 0,
+          "words": 0,
+          "score": 0
+        },
+        {
+          "question": "How would you design a highly available, fault-tolerant system to handle millions of real-time chat notifications per second?",
+          "answer": "[No speech or input provided]",
+          "round": "Hard",
+          "stutters": 0,
+          "words": 0,
+          "score": 0
+        },
+        {
+          "question": "Explain the architectural differences between vertical and horizontal scaling, and when you would choose one over the other.",
+          "answer": "[No speech or input provided]",
+          "round": "Hard",
+          "stutters": 0,
+          "words": 0,
+          "score": 0
+        },
+        {
+          "question": "What are memory leaks? How do you profile and detect them in modern development stacks?",
+          "answer": "[No speech or input provided]",
+          "round": "Hard",
+          "stutters": 0,
+          "words": 0,
+          "score": 0
+        },
+        {
+          "question": "Why should we hire you for this role, and how do your skills and values make you the ideal candidate?",
+          "answer": "[No speech or input provided]",
+          "round": "Common",
+          "stutters": 0,
+          "words": 0,
+          "score": 0
+        },
+        {
+          "question": "Why should we hire you for this role, and how do your skills and values make you the ideal candidate?",
+          "answer": "[No speech or input provided]",
+          "round": "Common",
+          "stutters": 0,
+          "words": 0,
+          "score": 0
+        }
+      ],
+      "createdAt": "2026-10-26T07:22:58.783Z"
+    },
+    {
+      "id": "c4403f9a-20ed-43e2-b03c-ca63f1faf6d1",
+      "role": "Software Engineer",
+      "resume": "Sri Dhaniesh resume.docx",
+      "totalTime": "00:50",
+      "totalWords": 3,
+      "totalStutters": 0,
+      "resumeScore": 85,
+      "answerScore": 4,
+      "fluencyScore": 10,
+      "overallScore": 15,
+      "answers": [
+        {
+          "question": "Can you explain the difference between a stack and a queue data structure, and give a real-world example of each?",
+          "answer": "LIFO and FIFO",
+          "round": "Easy",
+          "stutters": 0,
+          "words": 3,
+          "score": 43
+        },
+        {
+          "question": "What is the purpose of version control systems like Git, and how do they help developer collaboration?",
+          "answer": "[No speech or input provided]",
+          "round": "Easy",
+          "stutters": 0,
+          "words": 0,
+          "score": 0
+        },
+        {
+          "question": "Explain the core concept of Object-Oriented Programming and describe its four main pillars.",
+          "answer": "[No speech or input provided]",
+          "round": "Easy",
+          "stutters": 0,
+          "words": 0,
+          "score": 0
+        },
+        {
+          "question": "How do relational databases utilize indexes to speed up lookup queries? What are the trade-offs of having too many indexes?",
+          "answer": "[No speech or input provided]",
+          "round": "Medium",
+          "stutters": 0,
+          "words": 0,
+          "score": 0
+        },
+        {
+          "question": "Describe what a RESTful API is and explain what HTTP methods are commonly used to execute CRUD operations.",
+          "answer": "[No speech or input provided]",
+          "round": "Medium",
+          "stutters": 0,
+          "words": 0,
+          "score": 0
+        },
+        {
+          "question": "What is asynchronous programming? Explain how the JavaScript Event Loop coordinates execution.",
+          "answer": "[No speech or input provided]",
+          "round": "Medium",
+          "stutters": 0,
+          "words": 0,
+          "score": 0
+        },
+        {
+          "question": "How would you design a highly available, fault-tolerant system to handle millions of real-time chat notifications per second?",
+          "answer": "[No speech or input provided]",
+          "round": "Hard",
+          "stutters": 0,
+          "words": 0,
+          "score": 0
+        },
+        {
+          "question": "Explain the architectural differences between vertical and horizontal scaling, and when you would choose one over the other.",
+          "answer": "[No speech or input provided]",
+          "round": "Hard",
+          "stutters": 0,
+          "words": 0,
+          "score": 0
+        },
+        {
+          "question": "What are memory leaks? How do you profile and detect them in modern development stacks?",
+          "answer": "[No speech or input provided]",
+          "round": "Hard",
+          "stutters": 0,
+          "words": 0,
+          "score": 0
+        },
+        {
+          "question": "Why should we hire you for this role, and how do your skills and values make you the ideal candidate?",
+          "answer": "[No speech or input provided]",
+          "round": "Common",
+          "stutters": 0,
+          "words": 0,
+          "score": 0
+        },
+        {
+          "question": "Why should we hire you for this role, and how do your skills and values make you the ideal candidate?",
+          "answer": "[No speech or input provided]",
+          "round": "Common",
+          "stutters": 0,
+          "words": 0,
+          "score": 0
+        },
+        {
+          "question": "Why should we hire you for this role, and how do your skills and values make you the ideal candidate?",
+          "answer": "[No speech or input provided]",
+          "round": "Common",
+          "stutters": 0,
+          "words": 0,
+          "score": 0
+        }
+      ],
+      "createdAt": "2026-10-26T07:22:58.790Z"
+    }
+  ],
+  "feedback": []
+}

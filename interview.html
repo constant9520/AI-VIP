@@ -1,0 +1,1767 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>AI Interviewer — Interview Room</title>
+<style>
+  @import url('https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@300;400;500;600;700&family=JetBrains+Mono:wght@400;500;600&family=Inter:wght@400;500;600&display=swap');
+
+  :root {
+    --bg: #0a0d12;
+    --panel: rgba(18, 22, 31, 0.65);
+    --panel-2: #161b26;
+    --border: rgba(79, 227, 193, 0.18);
+    --border-strong: rgba(79, 227, 193, 0.4);
+    --text: #e7ebf0;
+    --text-dim: #8891a0;
+    --text-faint: #4d5561;
+    --cyan: #4fe3c1;
+    --cyan-glow: rgba(79, 227, 193, 0.35);
+    --amber: #ffb454;
+    --amber-glow: rgba(255, 180, 84, 0.35);
+    --violet: #6c6ff5;
+    --danger: #ff6b6b;
+    --radius: 16px;
+    --theme-color: var(--cyan);
+    --font-sans: 'Space Grotesk', sans-serif;
+    --font-mono: 'JetBrains Mono', monospace;
+  }
+
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  html, body {
+    height: 100%;
+    background: var(--bg);
+    color: var(--text);
+    font-family: 'Inter', sans-serif;
+    overflow-x: hidden;
+  }
+
+  /* ---------- BACKGROUND ENVIRONMENT ---------- */
+  .atmosphere { position: fixed; inset: 0; z-index: 0; overflow: hidden; pointer-events: none; }
+  .glow { position: absolute; border-radius: 50%; filter: blur(140px); opacity: .18; transition: all 0.8s ease; }
+  .glow--primary { width: 600px; height: 600px; background: var(--theme-color); top: -150px; left: -150px; }
+  .glow--secondary { width: 500px; height: 500px; background: var(--violet); bottom: -150px; right: -100px; }
+
+  .grid-floor { position: absolute; inset: 0; perspective: 600px; perspective-origin: 50% 20%; }
+  .grid-floor::before {
+    content: ""; position: absolute; left: -50%; right: -50%; bottom: -10%; height: 160%;
+    background-image: linear-gradient(rgba(255,255,255,0.015) 1px, transparent 1px), linear-gradient(90deg, rgba(255,255,255,0.015) 1px, transparent 1px);
+    background-size: 56px 56px; transform: rotateX(75deg); transform-origin: bottom;
+    animation: gridDrift 25s linear infinite;
+    mask-image: linear-gradient(to top, rgba(0,0,0,0.8), transparent 75%);
+    -webkit-mask-image: linear-gradient(to top, rgba(0,0,0,0.8), transparent 75%);
+  }
+  @keyframes gridDrift { from { background-position: 0 0; } to { background-position: 0 56px; } }
+
+  /* ---------- MAIN WRAPPER ---------- */
+  .app-container {
+    position: relative;
+    z-index: 10;
+    max-width: 1360px;
+    margin: 0 auto;
+    padding: 24px;
+    min-height: 100vh;
+    display: flex;
+    flex-direction: column;
+    gap: 20px;
+  }
+
+  /* ---------- HEADER BANNER ---------- */
+  header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    background: var(--panel);
+    border: 1px solid var(--border);
+    border-radius: var(--radius);
+    padding: 16px 28px;
+    backdrop-filter: blur(20px);
+    -webkit-backdrop-filter: blur(20px);
+  }
+
+  .logo-block {
+    display: flex;
+    flex-direction: column;
+  }
+  .logo-title {
+    font-family: var(--font-sans);
+    font-size: 20px;
+    font-weight: 700;
+    letter-spacing: 0.05em;
+    color: var(--cyan);
+  }
+  .logo-sub {
+    font-family: var(--font-mono);
+    font-size: 10px;
+    color: var(--text-dim);
+    letter-spacing: 0.1em;
+  }
+
+  .interview-meta {
+    display: flex;
+    align-items: center;
+    gap: 16px;
+  }
+  .meta-tag {
+    background: rgba(255, 255, 255, 0.03);
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    padding: 6px 12px;
+    font-size: 12px;
+    font-family: var(--font-sans);
+    font-weight: 500;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+  }
+  .meta-tag strong {
+    color: var(--cyan);
+  }
+
+  /* ---------- CONFERENCE ROOM GRID ---------- */
+  .conference-room {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 24px;
+    flex: 1;
+    min-height: 420px;
+  }
+
+  @media (max-width: 900px) {
+    .conference-room {
+      grid-template-columns: 1fr;
+    }
+  }
+
+  .video-panel {
+    position: relative;
+    background: var(--panel);
+    border: 1px solid var(--border);
+    border-radius: var(--radius);
+    overflow: hidden;
+    aspect-ratio: 16 / 10;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    backdrop-filter: blur(20px);
+    -webkit-backdrop-filter: blur(20px);
+    box-shadow: 0 20px 50px rgba(0,0,0,0.4);
+    transition: border-color 0.3s ease;
+  }
+
+  .video-panel.active-speaker {
+    border-color: var(--cyan);
+    box-shadow: 0 0 30px var(--cyan-glow);
+  }
+
+  .panel-overlay-label {
+    position: absolute;
+    top: 16px;
+    left: 16px;
+    font-family: var(--font-mono);
+    font-size: 11px;
+    background: rgba(10, 13, 18, 0.85);
+    border: 1px solid var(--border);
+    padding: 6px 12px;
+    border-radius: 6px;
+    letter-spacing: 0.1em;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+  }
+
+  .overlay-dot {
+    width: 6px;
+    height: 6px;
+    border-radius: 50%;
+    background: var(--cyan);
+    animation: pulse 1.5s infinite;
+  }
+
+  .diagnostics-label {
+    position: absolute;
+    bottom: 16px;
+    right: 16px;
+    font-family: var(--font-mono);
+    font-size: 9px;
+    color: var(--text-dim);
+    background: rgba(10, 13, 18, 0.7);
+    padding: 4px 8px;
+    border-radius: 4px;
+    line-height: 1.4;
+  }
+
+  .avatar-container {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    gap: 20px;
+  }
+
+  .ai-wave-sphere {
+    position: relative;
+    width: 140px;
+    height: 140px;
+    border-radius: 50%;
+    background: radial-gradient(circle, rgba(79, 227, 193, 0.2) 0%, rgba(10, 13, 18, 0.8) 70%);
+    border: 1px solid var(--border);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    transition: all 0.4s ease;
+  }
+
+  .ai-wave-sphere::before,
+  .ai-wave-sphere::after {
+    content: "";
+    position: absolute;
+    inset: -10px;
+    border-radius: 50%;
+    border: 1px solid rgba(79, 227, 193, 0.1);
+    animation: rotateRing 8s linear infinite;
+  }
+  .ai-wave-sphere::after {
+    inset: -22px;
+    border: 1px dashed rgba(79, 227, 193, 0.05);
+    animation: rotateRingRev 12s linear infinite;
+  }
+
+  .sphere-core {
+    width: 80px;
+    height: 80px;
+    border-radius: 50%;
+    background: var(--cyan);
+    box-shadow: 0 0 40px var(--cyan);
+    opacity: 0.7;
+    transition: all 0.3s ease;
+    animation: breathing 3s ease-in-out infinite;
+  }
+
+  .ai-wave-sphere.speaking .sphere-core {
+    animation: speakingPulse 0.4s infinite alternate;
+    background: var(--amber);
+    box-shadow: 0 0 50px var(--amber-glow);
+  }
+
+  .ai-wave-sphere.speaking {
+    border-color: var(--amber);
+  }
+
+  @keyframes rotateRing { 100% { transform: rotate(360deg); } }
+  @keyframes rotateRingRev { 100% { transform: rotate(-360deg); } }
+  @keyframes breathing {
+    0%, 100% { transform: scale(1); opacity: 0.6; }
+    50% { transform: scale(1.15); opacity: 0.9; }
+  }
+  @keyframes speakingPulse {
+    0% { transform: scale(1); opacity: 0.8; }
+    100% { transform: scale(1.3); opacity: 1; }
+  }
+
+  .ai-status-text {
+    font-family: var(--font-mono);
+    font-size: 12px;
+    color: var(--cyan);
+    letter-spacing: 0.2em;
+    text-transform: uppercase;
+  }
+
+  .candidate-video {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+    transform: scaleX(-1);
+  }
+
+  .candidate-placeholder {
+    display: none;
+    flex-direction: column;
+    align-items: center;
+    gap: 16px;
+    color: var(--text-dim);
+  }
+  .candidate-placeholder svg {
+    width: 64px;
+    height: 64px;
+    fill: currentColor;
+    opacity: 0.4;
+  }
+
+  /* ---------- CONTEXT & INTERACTIVE PANELS ---------- */
+  .interactive-board {
+    display: grid;
+    grid-template-columns: 1.2fr 0.8fr;
+    gap: 24px;
+  }
+
+  @media (max-width: 900px) {
+    .interactive-board {
+      grid-template-columns: 1fr;
+    }
+  }
+
+  .dialogue-panel {
+    background: var(--panel);
+    border: 1px solid var(--border);
+    border-radius: var(--radius);
+    padding: 24px;
+    backdrop-filter: blur(20px);
+    -webkit-backdrop-filter: blur(20px);
+    display: flex;
+    flex-direction: column;
+    gap: 20px;
+  }
+
+  .panel-title-bar {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    border-bottom: 1px solid var(--border);
+    padding-bottom: 12px;
+  }
+
+  .panel-title {
+    font-family: var(--font-sans);
+    font-size: 16px;
+    font-weight: 600;
+    color: var(--cyan);
+    letter-spacing: 0.05em;
+  }
+
+  .listening-badge {
+    font-family: var(--font-mono);
+    font-size: 10px;
+    background: rgba(10, 13, 18, 0.6);
+    border: 1px solid var(--border);
+    padding: 4px 10px;
+    border-radius: 20px;
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    color: var(--text-dim);
+  }
+
+  .listening-badge.active {
+    color: var(--cyan);
+    border-color: var(--cyan);
+    box-shadow: 0 0 10px rgba(79, 227, 193, 0.2);
+  }
+
+  .listening-badge.active::before {
+    content: "";
+    width: 6px;
+    height: 6px;
+    border-radius: 50%;
+    background: var(--cyan);
+    animation: pulse 1s infinite;
+  }
+
+  @keyframes pulse {
+    0% { transform: scale(0.9); opacity: 0.5; }
+    50% { transform: scale(1.2); opacity: 1; }
+    100% { transform: scale(0.9); opacity: 0.5; }
+  }
+
+  .question-container {
+    background: rgba(255, 255, 255, 0.02);
+    border: 1px dashed var(--border);
+    border-radius: 10px;
+    padding: 20px;
+    min-height: 90px;
+    display: flex;
+    align-items: center;
+  }
+
+  .question-text {
+    font-family: var(--font-sans);
+    font-size: 18px;
+    line-height: 1.5;
+    font-weight: 400;
+    color: var(--text);
+  }
+
+  .speech-input-box {
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+  }
+
+  .transcript-area {
+    width: 100%;
+    min-height: 120px;
+    background: rgba(10, 13, 18, 0.4);
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    padding: 16px;
+    font-family: var(--font-sans);
+    font-size: 14px;
+    color: var(--text);
+    resize: none;
+    line-height: 1.6;
+    outline: none;
+    transition: border-color 0.3s ease;
+  }
+  .transcript-area:focus {
+    border-color: var(--cyan-glow);
+  }
+  .transcript-area::placeholder {
+    color: var(--text-faint);
+  }
+
+  .speech-warning {
+    display: none;
+    font-family: var(--font-mono);
+    font-size: 11px;
+    color: var(--amber);
+    background: rgba(255, 180, 84, 0.08);
+    border: 1px solid rgba(255, 180, 84, 0.2);
+    padding: 8px 12px;
+    border-radius: 6px;
+  }
+
+  .control-row {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    gap: 16px;
+  }
+
+  .btn {
+    padding: 12px 24px;
+    border-radius: 8px;
+    font-family: var(--font-sans);
+    font-weight: 600;
+    font-size: 14px;
+    letter-spacing: 0.05em;
+    cursor: pointer;
+    transition: all 0.3s ease;
+    border: 1px solid transparent;
+  }
+
+  .btn-outline {
+    background: transparent;
+    border-color: var(--border);
+    color: var(--text-dim);
+  }
+  .btn-outline:hover {
+    border-color: var(--text-dim);
+    color: var(--text);
+  }
+
+  .btn-primary {
+    background: var(--cyan);
+    color: var(--bg);
+    font-weight: 700;
+    box-shadow: 0 0 20px var(--cyan-glow);
+  }
+  .btn-primary:hover {
+    box-shadow: 0 0 30px var(--cyan);
+    transform: translateY(-1px);
+  }
+  .btn-primary:active {
+    transform: translateY(1px);
+  }
+
+  /* ---------- SIDEBAR STATS & WAVEFORM ---------- */
+  .analytics-panel {
+    display: flex;
+    flex-direction: column;
+    gap: 20px;
+  }
+
+  .panel-card {
+    background: var(--panel);
+    border: 1px solid var(--border);
+    border-radius: var(--radius);
+    padding: 20px;
+    backdrop-filter: blur(20px);
+    -webkit-backdrop-filter: blur(20px);
+  }
+
+  .stat-grid {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 12px;
+  }
+
+  .stat-item {
+    background: rgba(255, 255, 255, 0.01);
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    padding: 12px;
+    text-align: center;
+  }
+
+  .stat-label {
+    font-family: var(--font-mono);
+    font-size: 9px;
+    color: var(--text-dim);
+    letter-spacing: 0.1em;
+    margin-bottom: 4px;
+  }
+
+  .stat-val {
+    font-family: var(--font-sans);
+    font-size: 20px;
+    font-weight: 700;
+    color: var(--cyan);
+  }
+
+  .visualizer-container {
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+  }
+
+  .visualizer-label {
+    font-family: var(--font-mono);
+    font-size: 10px;
+    color: var(--text-dim);
+    letter-spacing: 0.12em;
+    text-transform: uppercase;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+  }
+
+  #waveformCanvas {
+    width: 100%;
+    height: 80px;
+    background: rgba(10, 13, 18, 0.4);
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    display: block;
+  }
+
+  .round-progress-bar {
+    width: 100%;
+    height: 6px;
+    background: rgba(255, 255, 255, 0.05);
+    border-radius: 3px;
+    overflow: hidden;
+  }
+  .progress-fill {
+    width: 10%;
+    height: 100%;
+    background: var(--cyan);
+    box-shadow: 0 0 10px var(--cyan);
+    border-radius: 3px;
+    transition: width 0.4s ease;
+  }
+
+  .rounds-indicator {
+    display: flex;
+    justify-content: space-between;
+    margin-top: 6px;
+  }
+
+  .round-indicator-item {
+    font-family: var(--font-mono);
+    font-size: 9px;
+    color: var(--text-faint);
+    transition: color 0.3s;
+  }
+  .round-indicator-item.active {
+    color: var(--cyan);
+  }
+  .round-indicator-item.completed {
+    color: var(--text-dim);
+    text-decoration: line-through;
+  }
+
+  .media-toggles {
+    display: flex;
+    gap: 10px;
+  }
+  .media-btn {
+    width: 42px;
+    height: 42px;
+    border-radius: 8px;
+    border: 1px solid var(--border);
+    background: rgba(255,255,255,0.02);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    color: var(--text-dim);
+    cursor: pointer;
+    transition: all 0.3s;
+  }
+  .media-btn:hover {
+    color: var(--text);
+    border-color: rgba(255,255,255,0.2);
+  }
+  .media-btn.disabled {
+    border-color: var(--danger);
+    color: var(--danger);
+    background: rgba(255, 107, 107, 0.05);
+  }
+
+  #speechAlert {
+    display: none;
+  }
+</style>
+</head>
+<body data-theme="interview">
+
+  <div class="atmosphere">
+    <div class="glow glow--primary"></div>
+    <div class="glow glow--secondary"></div>
+    <div class="grid-floor"></div>
+  </div>
+
+  <div class="app-container">
+    
+    <!-- HEADER -->
+    <header>
+      <div class="logo-block">
+        <span class="logo-title">AI INTERVIEW ROOM</span>
+        <span class="logo-sub">SECURE PRACTICE INSTANCE</span>
+      </div>
+      <div class="interview-meta">
+        <div class="meta-tag" id="roleBadge">Role: <strong>Software Engineer</strong></div>
+        <div class="meta-tag" id="resumeBadge">Resume: <strong>resume.pdf</strong></div>
+      </div>
+    </header>
+
+    <!-- CONFERENCE ROOM VIEWS -->
+    <main class="conference-room">
+      
+      <!-- AI Interviewer Panel -->
+      <section class="video-panel active-speaker" id="aiPanel">
+        <div class="panel-overlay-label">
+          <span class="overlay-dot" style="background: var(--cyan);"></span>
+          ARIA — AI LEAD RECRUITER
+        </div>
+        <div class="avatar-container">
+          <div class="ai-wave-sphere" id="aiAvatar">
+            <div class="sphere-core" id="sphereCore"></div>
+          </div>
+          <div class="ai-status-text" id="aiStatus">Breathing...</div>
+        </div>
+        <div class="diagnostics-label">
+          STATUS: ONLINE<br>
+          OUTPUT: SPEECH SYNTHESIS
+        </div>
+      </section>
+
+      <!-- Candidate Stream Panel -->
+      <section class="video-panel" id="candidatePanel">
+        <div class="panel-overlay-label">
+          <span class="overlay-dot" id="cameraStatusIndicator" style="background: var(--text-dim); transition: background 0.3s;"></span>
+          CANDIDATE FEED (YOU)
+        </div>
+        
+        <video class="candidate-video" id="candidateVideo" autoplay playsinline muted></video>
+
+        <div class="candidate-placeholder" id="candidatePlaceholder">
+          <svg viewBox="0 0 24 24">
+            <path d="M12 12c2.21 0 4-1.79 4-4s-1.79-4-4-4-4 1.79-4 4 1.79 4 4 4zm0 2c-2.67 0-8 1.34-8 4v2h16v-2c0-2.66-5.33-4-8-4z"/>
+          </svg>
+          <span style="font-family: var(--font-mono); font-size: 11px;">CAMERA STREAM SUSPENDED</span>
+        </div>
+
+        <div class="diagnostics-label" id="cameraStatusText">
+          VIDEO: INGESTION STAGE<br>
+          AUDIO: MONITORED
+        </div>
+      </section>
+
+    </main>
+
+    <!-- DYNAMIC DIALOGUE & AUDIO BOARDS -->
+    <div class="interactive-board">
+      
+      <!-- Dialogue Input and Questions -->
+      <section class="dialogue-panel">
+        
+        <div class="panel-title-bar">
+          <span class="panel-title" id="roundTitle">ROUND 1: EASY QUESTION</span>
+          <div class="listening-badge" id="listeningStatus">STANDBY</div>
+        </div>
+
+        <!-- Question Box -->
+        <div class="question-container">
+          <div class="question-text" id="questionText">Initializing AI Agent, please standby...</div>
+        </div>
+
+        <!-- Transcription/Typing Input -->
+        <div class="speech-input-box">
+          <div class="visualizer-label">
+            <span>TRANSCRIPT (EDIT OR TYPE HERE)</span>
+            <span id="stutterCountBadge" style="color: var(--amber)">Stutters: 0</span>
+          </div>
+          <textarea class="transcript-area" id="transcriptText" placeholder="Your voice answers will transcribe here in real-time. You can also edit this text or type your answers directly if your microphone is off."></textarea>
+          
+          <div class="speech-warning" id="speechAlert">
+            ⚠️ Web Speech recognition is not supported in this browser version. Feel free to type in your answers!
+          </div>
+        </div>
+
+        <!-- Dialogue Controls -->
+        <div class="control-row">
+          <div class="media-toggles">
+            <button class="media-btn" id="toggleCam" title="Toggle Webcam">📷</button>
+            <button class="media-btn" id="toggleMic" title="Toggle Mic Transcript">🎙️</button>
+          </div>
+          <div style="display: flex; gap: 12px;">
+            <button class="btn btn-outline" id="btnQuit">Stop Session</button>
+            <button class="btn btn-primary" id="btnSubmit">Submit Answer</button>
+          </div>
+        </div>
+
+      </section>
+
+      <!-- Sidebar Status & Waves -->
+      <section class="analytics-panel">
+        
+        <!-- Live Audio Waveform -->
+        <div class="panel-card visualizer-container">
+          <div class="visualizer-label">
+            <span>Voice Frequency spectrum</span>
+            <span id="hzBadge" style="font-family: var(--font-mono); font-size: 9px; color: var(--text-faint);">0 Hz</span>
+          </div>
+          <canvas id="waveformCanvas"></canvas>
+        </div>
+
+        <!-- Diagnostic Stats -->
+        <div class="panel-card" style="flex: 1; display: flex; flex-direction: column; justify-content: space-between;">
+          <div class="stat-grid">
+            <div class="stat-item">
+              <div class="stat-label">QUESTION INDEX</div>
+              <div class="stat-val" id="progressText">1 / 10</div>
+            </div>
+            <div class="stat-item">
+              <div class="stat-label">TOTAL TIME</div>
+              <div class="stat-val" id="timerBadge">00:00</div>
+            </div>
+            <div class="stat-item">
+              <div class="stat-label">WORDS RECORDED</div>
+              <div class="stat-val" id="wordsBadge">0</div>
+            </div>
+            <div class="stat-item">
+              <div class="stat-label">SPEAKING RATE</div>
+              <div class="stat-val" id="rateBadge">0 wpm</div>
+            </div>
+          </div>
+
+          <!-- Round Progression Fill bar -->
+          <div style="margin-top: 24px;">
+            <div class="round-progress-bar">
+              <div class="progress-fill" id="progressFill"></div>
+            </div>
+            <div class="rounds-indicator">
+              <span class="round-indicator-item active" id="indRound1">R1: EASY</span>
+              <span class="round-indicator-item" id="indRound2">R2: MEDIUM</span>
+              <span class="round-indicator-item" id="indRound3">R3: HARD</span>
+              <span class="round-indicator-item" id="indCommon">R4: FINAL</span>
+            </div>
+          </div>
+        </div>
+
+      </section>
+
+    </div>
+
+  </div>
+
+  <script>
+    // ---------- ALL 14 ROLES QUESTION BANK ----------
+    const questionsBank = {
+      "Software Engineer": {
+        easy: [
+          "Can you explain the difference between a stack and a queue data structure, and give a real-world example of each?",
+          "What is the purpose of version control systems like Git, and how do they help developer collaboration?",
+          "Explain the core concept of Object-Oriented Programming and describe its four main pillars."
+        ],
+        medium: [
+          "How do relational databases utilize indexes to speed up lookup queries? What are the trade-offs of having too many indexes?",
+          "Describe what a RESTful API is and explain what HTTP methods are commonly used to execute CRUD operations.",
+          "What is asynchronous programming? Explain how the JavaScript Event Loop coordinates execution."
+        ],
+        hard: [
+          "How would you design a highly available, fault-tolerant system to handle millions of real-time chat notifications per second?",
+          "Explain the architectural differences between vertical and horizontal scaling, and when you would choose one over the other.",
+          "What are memory leaks? How do you profile and detect them in modern development stacks?"
+        ]
+      },
+      "Systems Engineer": {
+        easy: [
+          "What is the difference between TCP and UDP, and in what scenarios would you choose one over the other?",
+          "Can you explain what DNS is and the high-level process of how a domain name is resolved to an IP address?",
+          "What is the difference between a process and a thread inside an operating system?"
+        ],
+        medium: [
+          "Explain the difference between RAID 0, RAID 1, RAID 5, and RAID 10 in terms of performance and redundancy.",
+          "Describe what a Load Balancer does and how algorithms like Round Robin or Least Connections work.",
+          "What is virtual memory? Explain how paging and swapping assist OS memory management."
+        ],
+        hard: [
+          "Describe how you would diagnose a server that is suffering from high CPU load and constant disk I/O thrashing.",
+          "Explain the principles of Infrastructure as Code (IaC) and how it fits into a secure deployment lifecycle.",
+          "How would you architect a disaster recovery strategy with near-zero RTO (Recovery Time Objective) for a global database?"
+        ]
+      },
+      "Full Stack Developer": {
+        easy: [
+          "What is the Virtual DOM in frontend frameworks like React, and how does it improve rendering performance?",
+          "Explain the CSS Box Model and the difference between margin, border, padding, and content.",
+          "What is the difference between SQL and NoSQL databases, and when would you pick MongoDB over PostgreSQL?"
+        ],
+        medium: [
+          "How does JWT (JSON Web Token) authentication work between a frontend client and a backend server?",
+          "What is CORS (Cross-Origin Resource Sharing), why do browsers enforce it, and how do you configure it on a server?",
+          "Explain how state management works in modern web applications and how you avoid prop drilling."
+        ],
+        hard: [
+          "How do you optimize the Core Web Vitals and initial load time of a large Single Page Application?",
+          "How do you prevent common web vulnerabilities such as SQL Injection, XSS, and CSRF in a full stack application?",
+          "Walk through how you would architect a real-time collaborative document editor using WebSockets and backend persistence."
+        ]
+      },
+      "Data Analyst / AI Engineer": {
+        easy: [
+          "What is the difference between supervised, unsupervised, and reinforcement learning? Give an example of each.",
+          "How do you handle missing, corrupted, or outlier values when cleaning a dataset before analysis?",
+          "Explain the difference between SQL INNER JOIN, LEFT JOIN, and FULL OUTER JOIN."
+        ],
+        medium: [
+          "Why are Precision, Recall, and F1-Score often better evaluation metrics than Accuracy for imbalanced datasets?",
+          "What is overfitting in machine learning, and what techniques like regularization or dropout can prevent it?",
+          "Explain the curse of dimensionality and how Principal Component Analysis (PCA) helps reduce features."
+        ],
+        hard: [
+          "How does the self-attention mechanism in Transformer architectures enable Large Language Models to understand context?",
+          "How would you design a RAG (Retrieval-Augmented Generation) pipeline to answer queries over private company PDFs?",
+          "How do you detect and mitigate data drift and model degradation after deploying an ML model into production?"
+        ]
+      },
+      "Embedded Systems & IoT Engineer": {
+        easy: [
+          "What is the difference between a microprocessor and a microcontroller, and where is each typically used?",
+          "Compare the I2C, SPI, and UART communication protocols in terms of speed, pins, and addressing.",
+          "What is an Interrupt Service Routine (ISR), and why is it preferred over polling in embedded programming?"
+        ],
+        medium: [
+          "What is the purpose of the volatile keyword in Embedded C, and what happens if you omit it for hardware registers?",
+          "Explain how PWM (Pulse Width Modulation) works and how it is used to control servo motors or LED brightness.",
+          "Why is MQTT widely used in IoT devices over standard HTTP, and how does its Publish-Subscribe model work?"
+        ],
+        hard: [
+          "In an RTOS (Real-Time Operating System), what is Priority Inversion, and how does Priority Inheritance solve it?",
+          "How do you design an ultra-low-power battery-operated IoT sensor node that needs to run for years in the field?",
+          "How would you architect a secure Over-The-Air (OTA) firmware update mechanism with rollback protection for ESP32/ARM devices?"
+        ]
+      },
+      "VLSI Design Engineer": {
+        easy: [
+          "Why is CMOS technology dominant in digital IC design, and how do PMOS and NMOS transistors work together?",
+          "Explain Setup Time and Hold Time in sequential flip-flop circuits.",
+          "What is the difference between a latch and a flip-flop, and synchronous vs asynchronous reset?"
+        ],
+        medium: [
+          "In Verilog/SystemVerilog, what is the difference between blocking and non-blocking assignments?",
+          "What is Metastability in digital circuits, and how do you design a synchronizer to cross Clock Domain Boundaries (CDC)?",
+          "Explain the stages of the ASIC physical design flow from RTL synthesis to GDSII tapeout."
+        ],
+        hard: [
+          "How do you fix Setup Time and Hold Time violations during Static Timing Analysis (STA)?",
+          "What are the major sources of power dissipation in deep-submicron CMOS chips, and what low-power design techniques mitigate them?",
+          "Explain Design for Testability (DFT), Scan Chains, and ATPG in manufacturing fault detection."
+        ]
+      },
+      "Mechanical Design Engineer (CAD)": {
+        easy: [
+          "Explain the difference between stress and strain, and describe the key points on a Stress-Strain curve for ductile steel.",
+          "What is the difference between First Angle and Third Angle orthographic projection in engineering drawings?",
+          "Why do we use fillets and chamfers in mechanical part design, and how do fillets reduce stress concentration?"
+        ],
+        medium: [
+          "What is GD&T (Geometric Dimensioning and Tolerancing), and what do symbols like flatness, concentricity, and true position mean?",
+          "Walk through the steps of performing a Finite Element Analysis (FEA) simulation and how you validate mesh convergence.",
+          "How do you select the right material and heat treatment process when designing a high-load transmission gear?"
+        ],
+        hard: [
+          "Explain the core principles of Design for Manufacturing and Assembly (DFMA) for injection-molded plastic enclosures.",
+          "How do you perform tolerance stack-up analysis (Worst-Case vs RSS) for a multi-part mechanical assembly?",
+          "How do you analyze and prevent resonance and fatigue failure in a rotating mechanical shaft subjected to cyclic loading?"
+        ]
+      },
+      "Graduate Engineer Trainee (GET)": {
+        easy: [
+          "Explain your final year engineering project, the problem it solves, and your specific technical contribution.",
+          "What are the basic laws of thermodynamics or Ohm's/Kirchhoff's laws, and how do they apply to real engineering systems?",
+          "Why is workplace safety (EHS) and preventive maintenance critical in an industrial engineering environment?"
+        ],
+        medium: [
+          "What is Lean Manufacturing, and how do methodologies like 5S and Kaizen eliminate waste in operations?",
+          "How do you use Root Cause Analysis tools like the 5 Whys or Fishbone diagram when a system fails?",
+          "Explain the basic concepts of Quality Control, Six Sigma, and how you ensure a product meets specifications."
+        ],
+        hard: [
+          "How is Industry 4.0 (IoT, PLC automation, and predictive analytics) transforming modern engineering plants?",
+          "Describe a situation where a technical prototype or experiment failed. How did you troubleshoot and fix the issue?",
+          "How would you balance cost, quality, and delivery time when managing a cross-functional engineering deliverable?"
+        ]
+      },
+      "Junior Accountant / Audit Assistant": {
+        easy: [
+          "Explain the Three Golden Rules of Accounting for Personal, Real, and Nominal accounts with examples.",
+          "What is the difference between Accrual Accounting and Cash Basis Accounting?",
+          "What is a Trial Balance, and what types of accounting errors will not be detected by a Trial Balance?"
+        ],
+        medium: [
+          "Walk through how you prepare a Bank Reconciliation Statement (BRS) and common reasons for differences.",
+          "Explain the concepts of Depreciation (SLM vs WDV) and Amortization in financial statements.",
+          "How do GST (CGST, SGST, IGST) Input Tax Credit and TDS compliance work in day-to-day business accounting?"
+        ],
+        hard: [
+          "During a statutory or internal audit, how do you perform vouching and verification to detect fraudulent transactions?",
+          "How do year-end adjusting entries for prepaid expenses, accrued income, and bad debt provisions affect the Balance Sheet?",
+          "How do you audit revenue recognition and inventory valuation (FIFO vs Weighted Average) to ensure compliance?"
+        ]
+      },
+      "Financial Analyst / Operations Associate": {
+        easy: [
+          "What is the difference between the balance sheet, income statement, and cash flow statement?",
+          "Can you explain what working capital is, and why it is critical for a company's day-to-day operations?",
+          "What does Net Present Value (NPV) mean, and how is it used in investment decisions?"
+        ],
+        medium: [
+          "Explain the concept of EBITDA and why it is often preferred over Net Income when evaluating company performance.",
+          "What is a DCF (Discounted Cash Flow) model, and what are the main drivers or variables in this analysis?",
+          "Describe the difference between fixed costs and variable costs, and how they impact operating leverage."
+        ],
+        hard: [
+          "How would you assess the credit risk of a company applying for a large corporate loan during economic volatility?",
+          "Walk me through how a merger or acquisition can be accretive or dilutive to a company's Earnings Per Share.",
+          "How would you model and hedge foreign exchange risk for a multinational company with major operations in Europe and Asia?"
+        ]
+      },
+      "HR Executive / Recruiter": {
+        easy: [
+          "How do you handle a situation where a candidate doesn't show up for an interview without any prior notice?",
+          "What are the main stages of a standard recruitment lifecycle from sourcing to onboarding?",
+          "How would you describe the difference between company culture and company core values?"
+        ],
+        medium: [
+          "Describe a strategy you would use to source niche, highly technical talent in a highly competitive market.",
+          "How do you handle a compensation negotiation when a preferred candidate demands a salary above the approved budget?",
+          "What methods would you use to resolve a major conflict between two employees within the same department?"
+        ],
+        hard: [
+          "How would you design a company-wide diversity, equity, and inclusion (DEI) initiative that delivers measurable results?",
+          "Describe how you use HR analytics or recruitment metrics to identify bottlenecks in the talent acquisition pipeline.",
+          "How would you guide executive leadership through restructuring or downsizing while maintaining employee morale and employer brand?"
+        ]
+      },
+      "Data Entry Operator / MIS Executive": {
+        easy: [
+          "What methods do you use to maintain high typing speed while ensuring near-100% data accuracy?",
+          "Explain the difference between Relative, Absolute ($A$1), and Mixed cell references in Microsoft Excel.",
+          "How do you identify and remove duplicate records or extra spaces when cleaning a large spreadsheet?"
+        ],
+        medium: [
+          "Compare VLOOKUP, HLOOKUP, and INDEX-MATCH/XLOOKUP in Excel, and explain why VLOOKUP sometimes fails.",
+          "How do you build an interactive MIS dashboard using Pivot Tables, Slicers, and Conditional Formatting?",
+          "How do you set up Data Validation rules in Excel/Google Sheets to prevent users from entering invalid dates or text?"
+        ],
+        hard: [
+          "How do you automate repetitive daily MIS reports using Excel Macros (VBA), Power Query, or Google Apps Script?",
+          "Suppose a 50,000-row financial sheet shows #N/A, #VALUE!, and reconciliation mismatches. How do you audit and fix it?",
+          "How do you handle confidential employee or financial data to ensure data privacy, backup safety, and access control?"
+        ]
+      },
+      "Technical Support Engineer": {
+        easy: [
+          "A user reports that their computer cannot connect to the internet. Walk through your step-by-step troubleshooting process.",
+          "What is the difference between RAM and Hard Drive/SSD storage, and how does low RAM affect system performance?",
+          "How do you de-escalate a call when a customer is frustrated or angry about a recurring technical issue?"
+        ],
+        medium: [
+          "Explain what DHCP and DNS do on a corporate network, and how you fix an IP Address Conflict or DNS error.",
+          "How do IT ticketing systems work, and how do you prioritize tickets based on SLA, Severity, and Impact?",
+          "How do you troubleshoot a Windows machine experiencing Blue Screen of Death (BSOD) or slow boot times?"
+        ],
+        hard: [
+          "Walk through how Active Directory (AD) works for user authentication, password resets, and Group Policy (GPO) management.",
+          "A remote employee cannot access internal company servers over VPN, even though their home internet works. How do you diagnose this?",
+          "During a major P1 outage affecting 500 users, how do you manage incident communication, root cause isolation, and reporting?"
+        ]
+      },
+      "Digital Marketing & SEO Executive": {
+        easy: [
+          "What is the difference between On-Page SEO, Off-Page SEO, and Technical SEO?",
+          "Explain the difference between Organic Reach and Paid Reach (PPC) on search engines and social media.",
+          "What are the most important KPIs you track to measure the success of a digital marketing campaign?"
+        ],
+        medium: [
+          "How do you conduct keyword research, and why is Search Intent (Informational vs Transactional) critical for conversions?",
+          "In Google Ads or Meta Ads, what factors determine your Quality Score/Ad Relevance and Cost Per Click (CPC)?",
+          "How do you use Google Analytics (GA4) and Google Search Console to diagnose a sudden drop in website traffic?"
+        ],
+        hard: [
+          "How would you design a full-funnel B2B/B2C digital marketing strategy (TOFU, MOFU, BOFU) with a limited monthly budget?",
+          "How do you run a statistically valid A/B test on a high-traffic landing page to improve Conversion Rate Optimization (CRO)?",
+          "With third-party cookies being restricted, how do you build first-party data and attribution models?"
+        ]
+      }
+    };
+
+    const fallbackQuestions = questionsBank["Software Engineer"];
+    const finalCommonQuestion = "Why should we hire you for this role, and how do your skills and values make you the ideal candidate?";
+
+    // ---------- QUESTION-SPECIFIC EXPECTED KEYWORDS FOR STRICT GRADING ----------
+    const questionKeywordsMap = {
+      "stack and a queue": ["lifo", "fifo", "last in", "first in", "push", "pop", "enqueue", "dequeue", "plate", "line"],
+      "version control": ["git", "branch", "merge", "commit", "history", "track", "repository", "conflict", "pull", "code"],
+      "object-oriented": ["encapsulation", "abstraction", "inheritance", "polymorphism", "class", "object", "method", "pillar"],
+      "indexes": ["b-tree", "lookup", "search", "write", "insert", "update", "slow", "pointer", "scan", "table", "performance"],
+      "restful api": ["get", "post", "put", "delete", "patch", "stateless", "http", "endpoint", "json", "resource"],
+      "asynchronous": ["non-blocking", "call stack", "callback", "promise", "async", "await", "queue", "single-threaded", "loop"],
+      "millions of real-time chat": ["load balancer", "kafka", "websocket", "redis", "cache", "sharding", "horizontal", "microservice", "queue"],
+      "vertical and horizontal": ["scale up", "scale out", "cpu", "ram", "server", "node", "distributed", "load", "downtime"],
+      "memory leaks": ["garbage", "heap", "reference", "ram", "profiler", "snapshot", "unreleased", "allocation", "memory"],
+      "tcp and udp": ["connection", "reliable", "handshake", "packet", "stream", "fast", "video", "gaming", "acknowledgment"],
+      "what dns is": ["domain", "ip", "resolver", "root", "nameserver", "record", "translate", "cache", "lookup"],
+      "process and a thread": ["memory", "shared", "lightweight", "isolated", "context switch", "cpu", "execution", "program"],
+      "raid 0": ["striping", "mirroring", "parity", "redundancy", "fault", "disk", "drive", "performance", "failure"],
+      "load balancer": ["distribute", "traffic", "server", "health", "round robin", "least connection", "availability", "proxy"],
+      "virtual memory": ["ram", "disk", "swap", "page", "address", "physical", "storage", "memory", "os"],
+      "high cpu load": ["top", "htop", "iostat", "vmstat", "process", "bottleneck", "memory", "swap", "log", "disk"],
+      "infrastructure as code": ["terraform", "ansible", "automate", "version", "declarative", "provision", "pipeline", "cloud"],
+      "disaster recovery": ["replication", "multi-region", "failover", "backup", "rpo", "rto", "active", "standby", "redundancy"],
+      "virtual dom": ["dom", "diffing", "reconciliation", "render", "memory", "update", "component", "state", "react"],
+      "css box model": ["margin", "border", "padding", "content", "box-sizing", "width", "height", "space", "layout"],
+      "sql and nosql": ["relational", "table", "document", "json", "schema", "scale", "unstructured", "query", "join"],
+      "jwt": ["token", "header", "payload", "signature", "stateless", "secret", "cookie", "localstorage", "verify", "auth"],
+      "cors": ["origin", "domain", "header", "browser", "security", "preflight", "access-control", "api"],
+      "state management": ["context", "redux", "store", "state", "component", "props", "global", "parent", "child"],
+      "core web vitals": ["lazy", "code splitting", "bundle", "cache", "cdn", "ssr", "image", "minify", "compression"],
+      "sql injection": ["sanitize", "parameterized", "prepared", "escape", "token", "csrf", "cookie", "validation", "input"],
+      "collaborative document": ["websocket", "crdt", "operational", "sync", "conflict", "redis", "database", "broadcast"],
+      "supervised, unsupervised": ["labeled", "unlabeled", "classification", "regression", "clustering", "reward", "agent", "train", "model"],
+      "missing, corrupted": ["impute", "mean", "median", "drop", "null", "nan", "outlier", "iqr", "clean", "pandas"],
+      "inner join": ["match", "table", "null", "left", "inner", "row", "combine", "key", "record"],
+      "precision, recall": ["false positive", "false negative", "imbalance", "confusion matrix", "harmonic", "class", "accuracy", "threshold"],
+      "overfitting": ["train", "test", "generalize", "variance", "bias", "l1", "l2", "dropout", "cross-validation"],
+      "curse of dimensionality": ["feature", "dimension", "variance", "orthogonal", "eigenvector", "projection", "compress", "matrix"],
+      "self-attention": ["query", "key", "value", "weight", "token", "context", "parallel", "embedding", "attention"],
+      "rag": ["chunk", "embedding", "vector", "database", "similarity", "prompt", "llm", "retrieve", "context"],
+      "data drift": ["drift", "monitor", "retrain", "pipeline", "distribution", "mlops", "baseline", "metric"],
+      "microprocessor and a microcontroller": ["ram", "rom", "peripheral", "soc", "chip", "gpio", "arduino", "stm32", "power", "embedded"],
+      "i2c, spi, and uart": ["sda", "scl", "mosi", "miso", "clock", "synchronous", "asynchronous", "baud", "master", "slave"],
+      "interrupt service routine": ["polling", "cpu", "hardware", "timer", "event", "latency", "context", "flag", "priority"],
+      "volatile": ["compiler", "optimize", "register", "memory", "isr", "variable", "change", "hardware"],
+      "pwm": ["duty cycle", "frequency", "pulse", "analog", "voltage", "average", "timer", "motor"],
+      "mqtt": ["broker", "topic", "publish", "subscribe", "lightweight", "bandwidth", "qos", "payload", "iot"],
+      "priority inversion": ["mutex", "semaphore", "task", "scheduler", "deadlock", "priority", "preempt", "block", "rtos"],
+      "ultra-low-power": ["deep sleep", "wake", "interrupt", "duty cycle", "current", "regulator", "ble", "battery"],
+      "over-the-air": ["partition", "bootloader", "signature", "hash", "rollback", "flash", "tls", "verify"],
+      "cmos": ["pmos", "nmos", "power", "static", "pull-up", "pull-down", "inverter", "voltage", "gate"],
+      "setup time": ["clock", "edge", "before", "after", "data", "stable", "flip-flop", "violation"],
+      "latch and a flip-flop": ["level", "edge", "clock", "transparent", "trigger", "reset", "timing"],
+      "blocking and non-blocking": ["sequential", "combinational", "always", "clock", "race", "parallel", "simulation", "register"],
+      "metastability": ["cdc", "two-flop", "synchronizer", "fifo", "mtbf", "clock domain", "setup", "hold"],
+      "asic physical design": ["synthesis", "floorplan", "placement", "cts", "clock tree", "routing", "sta", "drc", "lvs"],
+      "static timing analysis": ["buffer", "delay", "upsize", "vt", "clock skew", "frequency", "pipeline", "slack"],
+      "power dissipation": ["dynamic", "leakage", "short-circuit", "clock gating", "power gating", "multi-vt", "dvfs"],
+      "design for testability": ["scan", "mux", "stuck-at", "atpg", "bist", "jtag", "fault", "coverage", "test"],
+      "stress and strain": ["yield", "ultimate", "elastic", "plastic", "young", "modulus", "fracture", "hooke", "load"],
+      "first angle": ["view", "front", "top", "side", "plane", "projection", "symbol", "drawing"],
+      "fillets and chamfers": ["stress concentration", "sharp", "corner", "crack", "fatigue", "machining", "radius", "edge"],
+      "gd&t": ["datum", "tolerance", "mmc", "fit", "clearance", "interference", "inspection", "position"],
+      "finite element analysis": ["mesh", "boundary", "load", "constraint", "von mises", "element", "node", "convergence"],
+      "heat treatment": ["hardness", "wear", "carburizing", "quenching", "tempering", "alloy", "steel", "fatigue", "torque"],
+      "dfma": ["draft angle", "wall thickness", "sink mark", "undercut", "parting line", "rib", "mold", "tooling"],
+      "tolerance stack-up": ["worst case", "rss", "statistical", "gap", "interference", "dimension", "variation", "assembly"],
+      "resonance and fatigue": ["natural frequency", "modal", "sn curve", "endurance", "bearing", "critical speed", "vibration"],
+      "final year engineering project": ["project", "design", "test", "team", "problem", "solution", "component", "code", "hardware", "result"],
+      "thermodynamics": ["energy", "conservation", "entropy", "heat", "voltage", "current", "resistance", "power", "efficiency"],
+      "workplace safety": ["safety", "hazard", "ppe", "downtime", "breakdown", "maintenance", "inspection", "accident"],
+      "lean manufacturing": ["sort", "set", "shine", "standardize", "sustain", "continuous", "waste", "efficiency", "defect", "process"],
+      "root cause analysis": ["root cause", "why", "fishbone", "machine", "material", "method", "defect", "prevent", "problem"],
+      "six sigma": ["defect", "variation", "dmaic", "sigma", "inspection", "tolerance", "iso", "quality"],
+      "industry 4.0": ["automation", "plc", "scada", "sensor", "iot", "predictive", "cloud", "data", "efficiency"],
+      "prototype or experiment failed": ["debug", "test", "measure", "fix", "team", "component", "analyze", "root", "solution"],
+      "balance cost, quality": ["priority", "schedule", "budget", "quality", "risk", "stakeholder", "plan", "milestone"],
+      "golden rules of accounting": ["debit", "credit", "receiver", "giver", "comes in", "goes out", "expense", "loss", "income", "gain"],
+      "accrual accounting": ["earned", "incurred", "received", "paid", "revenue", "expense", "matching", "period", "cash"],
+      "trial balance": ["ledger", "debit", "credit", "omission", "commission", "principle", "compensating", "balance", "error"],
+      "bank reconciliation": ["cash book", "passbook", "cheque", "uncleared", "bank charges", "interest", "deposit", "balance"],
+      "depreciation": ["straight line", "written down", "useful life", "salvage", "asset", "intangible", "wear", "expense"],
+      "gst": ["input tax", "output", "cgst", "sgst", "igst", "tds", "deduct", "invoice", "return", "compliance"],
+      "vouching and verification": ["voucher", "invoice", "supporting", "internal control", "physical", "confirm", "trail", "sample", "audit"],
+      "year-end adjusting": ["asset", "liability", "provision", "doubtful", "matching", "profit", "receivable", "prepaid"],
+      "inventory valuation": ["fifo", "weighted", "nrv", "cost", "cut-off", "delivery", "invoice", "physical count"],
+      "balance sheet, income statement": ["asset", "liability", "equity", "revenue", "expense", "profit", "cash", "operating", "investing", "financing"],
+      "working capital": ["current asset", "current liability", "liquidity", "short-term", "cash", "inventory", "payable", "receivable"],
+      "net present value": ["discount", "cash flow", "time value", "present", "rate", "positive", "investment", "return"],
+      "ebitda": ["interest", "tax", "depreciation", "amortization", "operating", "profit", "cash", "valuation"],
+      "dcf": ["free cash flow", "wacc", "terminal", "discount", "projection", "present value", "forecast", "growth"],
+      "fixed costs": ["variable", "volume", "production", "rent", "salary", "margin", "break-even", "leverage"],
+      "credit risk": ["cash flow", "debt", "ratio", "collateral", "interest coverage", "default", "credit", "balance sheet"],
+      "accretive or dilutive": ["eps", "earnings", "synergy", "acquisition", "share", "pe ratio", "debt", "interest"],
+      "foreign exchange": ["forward", "option", "swap", "currency", "hedge", "exposure", "derivative", "volatility"],
+      "doesn't show up": ["follow up", "call", "email", "reschedule", "communicate", "professional", "candidate"],
+      "recruitment lifecycle": ["sourcing", "screening", "interview", "selection", "offer", "onboarding", "job description"],
+      "company culture": ["behavior", "environment", "belief", "principle", "daily", "practice", "mission", "values"],
+      "niche, highly technical": ["linkedin", "boolean", "github", "passive", "referral", "network", "community", "outreach"],
+      "compensation negotiation": ["budget", "benefits", "bonus", "flexibility", "market", "growth", "expectation", "value"],
+      "major conflict": ["listen", "neutral", "mediate", "private", "root cause", "policy", "solution", "agreement"],
+      "diversity, equity": ["inclusive", "bias", "structured", "diverse", "panel", "metric", "training", "culture"],
+      "hr analytics": ["time to hire", "cost per hire", "conversion", "funnel", "quality", "retention", "attrition"],
+      "restructuring or downsizing": ["transparent", "empathy", "severance", "outplacement", "communication", "morale", "support"],
+      "typing speed": ["touch typing", "verify", "proofread", "double check", "validation", "shortcut", "accuracy", "error"],
+      "cell references": ["dollar", "lock", "row", "column", "formula", "copy", "drag", "fixed", "cell", "reference"],
+      "duplicate records": ["remove duplicates", "trim", "clean", "conditional formatting", "filter", "unique", "column"],
+      "vlookup": ["lookup", "column", "index", "match", "left", "exact", "false", "range", "table", "xlookup"],
+      "mis dashboard": ["pivot", "slicer", "chart", "summary", "filter", "group", "refresh", "kpi", "dashboard"],
+      "data validation": ["validation", "dropdown", "list", "date", "number", "alert", "error", "restrict", "input"],
+      "excel macros": ["macro", "vba", "power query", "automate", "refresh", "transform", "script", "merge"],
+      "50,000-row": ["iferror", "data type", "trim", "sumifs", "pivot", "reconcile", "trace", "audit", "filter"],
+      "confidential employee": ["password", "encrypt", "permission", "backup", "access", "confidential", "audit"],
+      "cannot connect to the internet": ["ipconfig", "ping", "dns", "router", "cable", "wifi", "adapter", "gateway", "dhcp", "restart"],
+      "ram and hard drive": ["volatile", "temporary", "permanent", "ssd", "memory", "slow", "freeze", "swap", "multitask"],
+      "de-escalate": ["empathy", "listen", "apologize", "calm", "acknowledge", "reassure", "ownership", "resolve"],
+      "dhcp and dns": ["ipconfig", "release", "renew", "flushdns", "static", "dynamic", "lease", "server", "ip"],
+      "ticketing systems": ["sla", "severity", "priority", "urgency", "impact", "p1", "escalate", "ticket", "resolution"],
+      "blue screen": ["safe mode", "event viewer", "driver", "dump", "chkdsk", "sfc", "ram", "update", "rollback"],
+      "active directory": ["domain controller", "ldap", "kerberos", "gpo", "ou", "group", "permission", "lockout", "policy"],
+      "over vpn": ["vpn", "tunnel", "firewall", "port", "split tunnel", "route", "certificate", "mfa", "dns", "ping"],
+      "major p1 outage": ["bridge", "stakeholder", "workaround", "rollback", "logs", "root cause", "rca", "status", "escalate"],
+      "on-page seo": ["keyword", "meta", "title", "content", "backlink", "authority", "sitemap", "robots", "speed", "crawl"],
+      "organic reach": ["organic", "paid", "ad", "ppc", "budget", "long-term", "instant", "algorithm", "cpc", "seo"],
+      "important kpis": ["ctr", "conversion", "roas", "roi", "cpc", "cpa", "bounce", "traffic", "lead", "engagement"],
+      "keyword research": ["volume", "difficulty", "long-tail", "intent", "buyer", "competitor", "ahrefs", "semrush", "ranking"],
+      "quality score": ["quality score", "ctr", "landing page", "relevance", "ad copy", "bid", "auction", "targeting"],
+      "google analytics": ["ga4", "search console", "algorithm", "penalty", "crawl", "index", "source", "traffic", "bounce"],
+      "full-funnel": ["awareness", "consideration", "conversion", "retargeting", "remarketing", "lead", "email", "funnel", "roas"],
+      "a/b test": ["hypothesis", "control", "variant", "cta", "headline", "sample", "significance", "heatmap", "cro"],
+      "third-party cookies": ["first-party", "server-side", "utm", "crm", "email", "consent", "attribution", "conversion api"],
+      "why should we hire you": ["skill", "experience", "project", "learn", "team", "contribute", "problem", "value", "fit", "deliver", "goal", "dedicated"]
+    };
+
+    // ---------- EXTRACT PARAMS & SETUP MATRIX ----------
+    const urlParams = new URLSearchParams(window.location.search);
+    const selectedRole = urlParams.get('role') || 'Software Engineer';
+    const resumeName = urlParams.get('resume') || 'No File Uploaded';
+
+    document.getElementById('roleBadge').innerHTML = `Role: <strong>${selectedRole}</strong>`;
+    document.getElementById('resumeBadge').innerHTML = `Resume: <strong>${resumeName}</strong>`;
+
+    let selectedQuestions = questionsBank[selectedRole];
+    if (!selectedQuestions) {
+      selectedQuestions = fallbackQuestions;
+    }
+
+    const interviewQuestions = [
+      ...selectedQuestions.easy,
+      ...selectedQuestions.medium,
+      ...selectedQuestions.hard,
+      finalCommonQuestion
+    ];
+
+    // ---------- STATE MANAGEMENT Variables ----------
+    let currentQuestionIndex = 0;
+    let timeSeconds = 0;
+    let timerInterval;
+    let isMicOn = true;
+    let isCamOn = true;
+    let isAISpeaking = false;
+    
+    let sessionAnswers = [];
+    let sessionStutterCounts = [];
+    let sessionWordCounts = [];
+    let currentAnswerText = "";
+    
+    const fillerWords = ["um", "uh", "ah", "like", "you know", "basically", "literally", "erm", "hmm"];
+
+    // ---------- CORE HTML ELEMENTS ----------
+    const questionTextEl = document.getElementById('questionText');
+    const transcriptTextEl = document.getElementById('transcriptText');
+    const timerBadgeEl = document.getElementById('timerBadge');
+    const progressTextEl = document.getElementById('progressText');
+    const progressFillEl = document.getElementById('progressFill');
+    const wordsBadgeEl = document.getElementById('wordsBadge');
+    const rateBadgeEl = document.getElementById('rateBadge');
+    const stutterCountBadgeEl = document.getElementById('stutterCountBadge');
+    const aiStatusEl = document.getElementById('aiStatus');
+    const aiAvatarEl = document.getElementById('aiAvatar');
+    const listeningStatusEl = document.getElementById('listeningStatus');
+    const btnSubmitEl = document.getElementById('btnSubmit');
+    const btnQuitEl = document.getElementById('btnQuit');
+    const toggleCamEl = document.getElementById('toggleCam');
+    const toggleMicEl = document.getElementById('toggleMic');
+
+    // ---------- TIMER SETUP ----------
+    function startTimer() {
+      timerInterval = setInterval(() => {
+        timeSeconds++;
+        const mins = String(Math.floor(timeSeconds / 60)).padStart(2, '0');
+        const secs = String(timeSeconds % 60).padStart(2, '0');
+        timerBadgeEl.textContent = `${mins}:${secs}`;
+        
+        const currentWords = transcriptTextEl.value.trim().split(/\s+/).filter(w => w.length > 0).length;
+        const pastWords = sessionWordCounts.reduce((a, b) => a + b, 0);
+        const totalWords = pastWords + currentWords;
+        wordsBadgeEl.textContent = totalWords;
+        
+        const speakingMins = Math.max(timeSeconds, 1) / 60;
+        const wpm = totalWords > 0 ? Math.round(totalWords / speakingMins) : 0;
+        rateBadgeEl.textContent = `${wpm} wpm`;
+      }, 1000);
+    }
+
+    // ---------- CAMERA (WEBCAM) INTEGRATION ----------
+    let cameraStream;
+    async function initWebcam() {
+      const video = document.getElementById('candidateVideo');
+      const placeholder = document.getElementById('candidatePlaceholder');
+      const indicator = document.getElementById('cameraStatusIndicator');
+      const statusText = document.getElementById('cameraStatusText');
+
+      try {
+        cameraStream = await navigator.mediaDevices.getUserMedia({ video: true, audio: false });
+        video.srcObject = cameraStream;
+        video.style.display = 'block';
+        placeholder.style.display = 'none';
+        indicator.style.background = "var(--cyan)";
+        statusText.innerHTML = `VIDEO: ACTIVE (30FPS)<br>AUDIO: MONITORED`;
+        isCamOn = true;
+        toggleCamEl.classList.remove('disabled');
+      } catch (err) {
+        video.style.display = 'none';
+        placeholder.style.display = 'flex';
+        indicator.style.background = "var(--danger)";
+        statusText.innerHTML = `VIDEO: BLOCKED/UNAVAILABLE<br>AUDIO: MONITORED`;
+        isCamOn = false;
+        toggleCamEl.classList.add('disabled');
+      }
+    }
+
+    function toggleWebcam() {
+      if (cameraStream) {
+        const videoTrack = cameraStream.getVideoTracks()[0];
+        if (videoTrack) {
+          videoTrack.enabled = !videoTrack.enabled;
+          isCamOn = videoTrack.enabled;
+          
+          const video = document.getElementById('candidateVideo');
+          const placeholder = document.getElementById('candidatePlaceholder');
+          const indicator = document.getElementById('cameraStatusIndicator');
+          const statusText = document.getElementById('cameraStatusText');
+          
+          if (isCamOn) {
+            video.style.display = 'block';
+            placeholder.style.display = 'none';
+            indicator.style.background = "var(--cyan)";
+            statusText.innerHTML = `VIDEO: ACTIVE (30FPS)<br>AUDIO: MONITORED`;
+            toggleCamEl.classList.remove('disabled');
+          } else {
+            video.style.display = 'none';
+            placeholder.style.display = 'flex';
+            indicator.style.background = "var(--text-faint)";
+            statusText.innerHTML = `VIDEO: OFF<br>AUDIO: MONITORED`;
+            toggleCamEl.classList.add('disabled');
+          }
+        }
+      } else {
+        initWebcam();
+      }
+    }
+
+    // ---------- SPEECH SYNTHESIS (AI VOICE) ----------
+    function speakQuestion(text) {
+      if (!('speechSynthesis' in window)) {
+        startListening();
+        return;
+      }
+      window.speechSynthesis.cancel();
+      stopListening();
+      
+      isAISpeaking = true;
+      aiStatusEl.textContent = "Speaking...";
+      aiAvatarEl.classList.add('speaking');
+      
+      const utterance = new SpeechSynthesisUtterance(text);
+      const voices = window.speechSynthesis.getVoices();
+      const idealVoice = voices.find(v => v.name.includes("Google US English") || v.name.includes("Microsoft Zira") || v.name.includes("Female") || v.lang.startsWith("en"));
+      if (idealVoice) utterance.voice = idealVoice;
+      
+      utterance.rate = 1.05;
+      utterance.pitch = 1.0;
+      
+      utterance.onend = () => {
+        isAISpeaking = false;
+        aiStatusEl.textContent = "Listening...";
+        aiAvatarEl.classList.remove('speaking');
+        startListening();
+      };
+      utterance.onerror = () => {
+        isAISpeaking = false;
+        aiStatusEl.textContent = "Listening...";
+        aiAvatarEl.classList.remove('speaking');
+        startListening();
+      };
+      
+      window.speechSynthesis.speak(utterance);
+    }
+
+    if ('speechSynthesis' in window) {
+      window.speechSynthesis.onvoiceschanged = () => {};
+    }
+
+    // ---------- SPEECH RECOGNITION (TRANSCRIBE) ----------
+    let recognition;
+    let recognitionActive = false;
+
+    function initSpeechRecognition() {
+      const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
+      if (!SpeechRecognition) {
+        document.getElementById('speechAlert').style.display = 'block';
+        return;
+      }
+
+      recognition = new SpeechRecognition();
+      recognition.continuous = true;
+      recognition.interimResults = true;
+      recognition.lang = 'en-US';
+
+      recognition.onresult = (event) => {
+        let interimTranscript = '';
+        let finalTranscript = '';
+
+        for (let i = event.resultIndex; i < event.results.length; ++i) {
+          if (event.results[i].isFinal) {
+            finalTranscript += event.results[i][0].transcript + ' ';
+          } else {
+            interimTranscript += event.results[i][0].transcript;
+          }
+        }
+
+        if (finalTranscript) {
+          currentAnswerText += finalTranscript;
+        }
+        const combined = currentAnswerText + interimTranscript;
+        transcriptTextEl.value = combined;
+        
+        const stutters = countStutters(combined);
+        stutterCountBadgeEl.textContent = `Stutters: ${stutters}`;
+      };
+
+      recognition.onend = () => {
+        if (recognitionActive && isMicOn) {
+          currentAnswerText = transcriptTextEl.value;
+          try {
+            recognition.start();
+          } catch (e) {}
+        }
+      };
+      
+      recognition.onerror = (e) => {
+        if (e.error === 'not-allowed' || e.error === 'audio-capture' || e.error === 'language-not-supported') {
+          isMicOn = false;
+          recognitionActive = false;
+          toggleMicEl.classList.add('disabled');
+          listeningStatusEl.textContent = "BLOCKED";
+          listeningStatusEl.classList.remove('active');
+          
+          const alertEl = document.getElementById('speechAlert');
+          if (alertEl) {
+            alertEl.textContent = "⚠️ Microphone access is blocked or unavailable. Feel free to type your answers directly.";
+            alertEl.style.display = 'block';
+          }
+        }
+      };
+    }
+
+    function startListening() {
+      if (recognition && !recognitionActive && isMicOn) {
+        currentAnswerText = transcriptTextEl.value;
+        try {
+          recognitionActive = true;
+          recognition.start();
+          listeningStatusEl.textContent = "LISTENING";
+          listeningStatusEl.classList.add('active');
+        } catch (e) {}
+      }
+    }
+
+    function stopListening() {
+      if (recognition && recognitionActive) {
+        recognitionActive = false;
+        try {
+          recognition.stop();
+        } catch (e) {}
+        listeningStatusEl.textContent = "STANDBY";
+        listeningStatusEl.classList.remove('active');
+      }
+    }
+
+    function toggleMic() {
+      if (!recognition) return;
+      isMicOn = !isMicOn;
+      if (isMicOn) {
+        toggleMicEl.classList.remove('disabled');
+        if (!isAISpeaking) startListening();
+      } else {
+        toggleMicEl.classList.add('disabled');
+        stopListening();
+      }
+    }
+
+    transcriptTextEl.addEventListener('focus', () => {
+      if (recognitionActive) stopListening();
+    });
+
+    transcriptTextEl.addEventListener('blur', () => {
+      currentAnswerText = transcriptTextEl.value;
+      if (isMicOn && !isAISpeaking) startListening();
+    });
+
+    transcriptTextEl.addEventListener('input', () => {
+      stutterCountBadgeEl.textContent = `Stutters: ${countStutters(transcriptTextEl.value)}`;
+    });
+
+    // ---------- STUTTER & WORD COUNTER LOGIC ----------
+    function countStutters(text) {
+      const words = text.toLowerCase().split(/\s+/).filter(w => w.length > 0);
+      let stutters = 0;
+      
+      words.forEach(w => {
+        const cleanWord = w.replace(/[^a-z]/g, '');
+        if (fillerWords.includes(cleanWord)) {
+          stutters++;
+        }
+      });
+      
+      for (let i = 1; i < words.length; i++) {
+        if (words[i] === words[i-1] && words[i].length > 1 && !fillerWords.includes(words[i])) {
+          stutters++;
+        }
+      }
+      return stutters;
+    }
+
+    // ---------- DYNAMIC AUDIO WAVEFORM VISUALIZER ----------
+    let audioCtx;
+    let analyser;
+    let micSource;
+    let dataArray;
+    let animationFrameId;
+
+    async function initAudioVisualizer() {
+      const hzBadge = document.getElementById('hzBadge');
+      try {
+        const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+        audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+        analyser = audioCtx.createAnalyser();
+        micSource = audioCtx.createMediaStreamSource(stream);
+        micSource.connect(analyser);
+        
+        analyser.fftSize = 128;
+        const bufferLength = analyser.frequencyBinCount;
+        dataArray = new Uint8Array(bufferLength);
+        
+        drawWaveform();
+      } catch (err) {
+        hzBadge.textContent = "MIC DISCONNECTED";
+      }
+    }
+
+    function drawWaveform() {
+      const canvas = document.getElementById('waveformCanvas');
+      const ctx = canvas.getContext('2d');
+      const hzBadge = document.getElementById('hzBadge');
+      
+      canvas.width = canvas.offsetWidth;
+      canvas.height = canvas.offsetHeight;
+      
+      const width = canvas.width;
+      const height = canvas.height;
+
+      function render() {
+        animationFrameId = requestAnimationFrame(render);
+        
+        if (!isMicOn || !analyser) {
+          ctx.fillStyle = '#0a0d12';
+          ctx.fillRect(0, 0, width, height);
+          ctx.strokeStyle = 'rgba(79, 227, 193, 0.05)';
+          ctx.lineWidth = 2;
+          ctx.beginPath();
+          ctx.moveTo(0, height / 2);
+          ctx.lineTo(width, height / 2);
+          ctx.stroke();
+          hzBadge.textContent = "0 Hz (MUTED)";
+          return;
+        }
+
+        analyser.getByteFrequencyData(dataArray);
+        
+        let maxVal = 0;
+        let maxIndex = 0;
+        for (let i = 0; i < dataArray.length; i++) {
+          if (dataArray[i] > maxVal) {
+            maxVal = dataArray[i];
+            maxIndex = i;
+          }
+        }
+        const sampleRate = audioCtx.sampleRate;
+        const peakHz = Math.round(maxIndex * (sampleRate / analyser.fftSize));
+        hzBadge.textContent = maxVal > 15 ? `${peakHz} Hz` : `0 Hz (SILENT)`;
+
+        ctx.fillStyle = '#0a0d12';
+        ctx.fillRect(0, 0, width, height);
+
+        const barWidth = (width / dataArray.length) * 1.5;
+        let barHeight;
+        let x = 0;
+
+        for (let i = 0; i < dataArray.length; i++) {
+          barHeight = (dataArray[i] / 255) * height * 0.9;
+          if (barHeight < 2) barHeight = 2;
+
+          const gradient = ctx.createLinearGradient(0, height, 0, height - barHeight);
+          gradient.addColorStop(0, 'rgba(79, 227, 193, 0.05)');
+          gradient.addColorStop(1, 'rgba(79, 227, 193, 0.8)');
+
+          ctx.fillStyle = gradient;
+          ctx.fillRect(x, (height - barHeight) / 2, barWidth - 1, barHeight);
+          x += barWidth;
+        }
+      }
+      render();
+    }
+
+    // ---------- QUESTION ENGINE FLOW ----------
+    function loadQuestion() {
+      stopListening();
+      currentAnswerText = "";
+      
+      const q = interviewQuestions[currentQuestionIndex];
+      questionTextEl.textContent = q;
+      transcriptTextEl.value = "";
+      stutterCountBadgeEl.textContent = `Stutters: 0`;
+
+      progressTextEl.textContent = `${currentQuestionIndex + 1} / 10`;
+      
+      const percent = ((currentQuestionIndex + 1) / 10) * 100;
+      progressFillEl.style.width = `${percent}%`;
+
+      const r1Ind = document.getElementById('indRound1');
+      const r2Ind = document.getElementById('indRound2');
+      const r3Ind = document.getElementById('indRound3');
+      const finalInd = document.getElementById('indCommon');
+      const roundTitleEl = document.getElementById('roundTitle');
+
+      [r1Ind, r2Ind, r3Ind, finalInd].forEach(el => el.classList.remove('active'));
+
+      if (currentQuestionIndex < 3) {
+        r1Ind.classList.add('active');
+        roundTitleEl.textContent = `ROUND 1: EASY QUESTION (Q ${currentQuestionIndex + 1}/3)`;
+      } else if (currentQuestionIndex < 6) {
+        r1Ind.classList.add('completed');
+        r2Ind.classList.add('active');
+        roundTitleEl.textContent = `ROUND 2: MEDIUM QUESTION (Q ${currentQuestionIndex - 2}/3)`;
+      } else if (currentQuestionIndex < 9) {
+        r2Ind.classList.add('completed');
+        r3Ind.classList.add('active');
+        roundTitleEl.textContent = `ROUND 3: HARD QUESTION (Q ${currentQuestionIndex - 5}/3)`;
+      } else {
+        r3Ind.classList.add('completed');
+        finalInd.classList.add('active');
+        roundTitleEl.textContent = `ROUND 4: FINAL COMMON QUESTION`;
+      }
+
+      if (currentQuestionIndex === 9) {
+        btnSubmitEl.textContent = "Finish Interview";
+        btnSubmitEl.style.background = "var(--amber)";
+        btnSubmitEl.style.color = "#0a0d12";
+        btnSubmitEl.style.boxShadow = "0 0 20px var(--amber-glow)";
+      }
+
+      speakQuestion(q);
+    }
+
+    // ---------- STRICT ANSWER EVALUATION ----------
+    function evaluateSingleAnswer(questionText, answerText, wordCount) {
+      // 1. Skip pannirundha or 3 words-ku kammiya irundha strictly 0 Marks!
+      if (!answerText || answerText === "[No speech or input provided]" || wordCount < 3) {
+        return 0;
+      }
+
+      const cleanAns = answerText.toLowerCase();
+      const cleanQ = questionText.toLowerCase();
+
+      // Anti-spam check
+      const wordsArr = cleanAns.split(/\s+/).filter(w => w.length > 0);
+      const uniqueWords = new Set(wordsArr);
+      if (wordCount >= 6 && uniqueWords.size / wordCount < 0.3) {
+        return 4;
+      }
+
+      // 2. Find expected keywords for this question
+      let expectedKeywords = [];
+      for (const [keyPhrase, kwList] of Object.entries(questionKeywordsMap)) {
+        if (cleanQ.includes(keyPhrase)) {
+          expectedKeywords = kwList;
+          break;
+        }
+      }
+
+      // 3. Keyword Relevance Check (Max 65 points)
+      let matchedCount = 0;
+      expectedKeywords.forEach(kw => {
+        if (cleanAns.includes(kw)) matchedCount++;
+      });
+
+      // Thappaana / Irrelevant answer (0 matching keywords) -> Max 5 to 12 marks
+      if (expectedKeywords.length > 0 && matchedCount === 0) {
+        return Math.min(12, Math.max(4, Math.floor(wordCount / 4)));
+      }
+
+      const relevanceScore = expectedKeywords.length > 0
+        ? Math.min(65, Math.round((matchedCount / 3) * 65))
+        : 30;
+
+      // 4. Explanation Depth Score (Max 35 points)
+      let depthScore = 0;
+      if (wordCount >= 6) depthScore = 8;
+      if (wordCount >= 15) depthScore = 18;
+      if (wordCount >= 28) depthScore = 28;
+      if (wordCount >= 42) depthScore = 35;
+
+      return Math.min(100, relevanceScore + depthScore);
+    }
+
+    // ---------- SUBMIT ANSWER HANDLING ----------
+    btnSubmitEl.addEventListener('click', () => {
+      const answer = transcriptTextEl.value.trim();
+      const wordCount = answer ? answer.split(/\s+/).filter(w => w.length > 0).length : 0;
+      const stutterCount = wordCount > 0 ? countStutters(answer) : 0;
+      const qText = interviewQuestions[currentQuestionIndex];
+      const qScore = evaluateSingleAnswer(qText, answer, wordCount);
+
+      sessionAnswers.push({
+        question: qText,
+        answer: wordCount > 0 ? answer : "[No speech or input provided]",
+        round: currentQuestionIndex < 3 ? 'Easy' : (currentQuestionIndex < 6 ? 'Medium' : (currentQuestionIndex < 9 ? 'Hard' : 'Common')),
+        stutters: stutterCount,
+        words: wordCount,
+        score: qScore
+      });
+
+      sessionStutterCounts.push(stutterCount);
+      sessionWordCounts.push(wordCount);
+
+      if (currentQuestionIndex < 9) {
+        currentQuestionIndex++;
+        loadQuestion();
+      } else {
+        finishInterview();
+      }
+    });
+
+    function finishInterview() {
+      stopListening();
+      if ('speechSynthesis' in window) window.speechSynthesis.cancel();
+      clearInterval(timerInterval);
+      if (cameraStream) {
+        cameraStream.getTracks().forEach(track => track.stop());
+      }
+      if (animationFrameId) {
+        cancelAnimationFrame(animationFrameId);
+      }
+
+      const totalWords = sessionWordCounts.reduce((a, b) => a + b, 0);
+      const totalStutters = sessionStutterCounts.reduce((a, b) => a + b, 0);
+      const answeredCount = sessionWordCounts.filter(w => w >= 3).length;
+
+      // 1. Resume Score: 0 if no file uploaded
+      let finalResumeScore = 0;
+      const hasResume = resumeName && resumeName !== "No File Uploaded" && resumeName.trim() !== "";
+      if (hasResume) {
+        let hash = 0;
+        for (let i = 0; i < resumeName.length; i++) {
+          hash = (hash * 31 + resumeName.charCodeAt(i)) % 16;
+        }
+        finalResumeScore = 76 + hash;
+      }
+
+      // 2. Answer Score: Strict average of all 10 questions
+      const totalAnswerPoints = sessionAnswers.reduce((acc, item) => acc + (item.score || 0), 0);
+      const finalAnswerScore = Math.round(totalAnswerPoints / interviewQuestions.length);
+
+      // 3. Fluency Score: 0% if silent/skipped, scaled by participation & stutters
+      let finalFluencyScore = 0;
+      if (totalWords >= 8 && answeredCount > 0) {
+        const stutterRatio = totalStutters / totalWords;
+        const rawFluency = Math.max(20, 100 - Math.round(stutterRatio * 240));
+        const participationScale = Math.min(1, answeredCount / 6);
+        finalFluencyScore = Math.round(rawFluency * participationScale);
+      } else if (totalWords > 0) {
+        finalFluencyScore = 10;
+      }
+
+      // 4. Overall Score
+      let overallScore = 0;
+      if (answeredCount === 0) {
+        overallScore = 0;
+      } else if (hasResume) {
+        overallScore = Math.round((finalAnswerScore * 0.70) + (finalFluencyScore * 0.18) + (finalResumeScore * 0.12));
+      } else {
+        overallScore = Math.round((finalAnswerScore * 0.82) + (finalFluencyScore * 0.18));
+      }
+
+      const report = {
+        role: selectedRole,
+        resume: resumeName,
+        totalTime: timerBadgeEl.textContent,
+        totalWords: totalWords,
+        totalStutters: totalStutters,
+        resumeScore: finalResumeScore,
+        answerScore: finalAnswerScore,
+        fluencyScore: finalFluencyScore,
+        overallScore: overallScore,
+        answers: sessionAnswers
+      };
+
+      sessionStorage.setItem('interview_report', JSON.stringify(report));
+      
+      fetch('/api/interview/evaluate', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(report)
+      }).catch(() => {}).finally(() => {
+        window.location.href = "results.html";
+      });
+    }
+
+    btnQuitEl.addEventListener('click', () => {
+      if (confirm("Are you sure you want to stop this interview? Your progress will be lost.")) {
+        if (cameraStream) {
+          cameraStream.getTracks().forEach(track => track.stop());
+        }
+        if ('speechSynthesis' in window) window.speechSynthesis.cancel();
+        window.location.href = "resume.html";
+      }
+    });
+
+    toggleCamEl.addEventListener('click', toggleWebcam);
+    toggleMicEl.addEventListener('click', toggleMic);
+
+    window.addEventListener('load', () => {
+      initWebcam();
+      initAudioVisualizer();
+      initSpeechRecognition();
+      startTimer();
+
+      setTimeout(() => {
+        loadQuestion();
+      }, 1500);
+    });
+  </script>
+</body>
+</html>

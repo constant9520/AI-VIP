@@ -1,0 +1,479 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>AI Interviewer — Access</title>
+<style>
+  @import url('https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500;600;700&family=Inter:wght@400;500;600&display=swap');
+
+  :root{
+    --bg:#0a0d12;
+    --panel:#12161f;
+    --panel-2:#161b26;
+    --border:rgba(79,227,193,0.18);
+    --border-strong:rgba(79,227,193,0.5);
+    --text:#e7ebf0;
+    --text-dim:#8891a0;
+    --text-faint:#4d5561;
+    --cyan:#4fe3c1;
+    --amber:#ffb454;
+    --violet:#6c6ff5;
+    --danger:#ff6b6b;
+    --radius:14px;
+    --theme-color: var(--cyan);
+  }
+
+  *{ box-sizing:border-box; margin:0; padding:0; }
+
+  html,body{
+    height:100%;
+    background:var(--bg);
+    color:var(--text);
+    font-family:'Inter', sans-serif;
+    overflow:hidden;
+  }
+
+  ::selection{ background:var(--theme-color); color:#06110d; }
+
+  button{ font-family:inherit; cursor:pointer; }
+
+  /* ---------- background grid + dynamic atmosphere ---------- */
+  .atmosphere{ position:fixed; inset:0; z-index:0; overflow:hidden; }
+  .glow{ position:absolute; border-radius:50%; filter:blur(140px); opacity:.22; transition: all 0.8s ease; }
+  
+  body[data-theme="interview"] { --theme-color: var(--cyan); }
+  body[data-theme="job"] { --theme-color: var(--amber); }
+  body[data-theme="future"] { --theme-color: var(--violet); }
+
+  .glow--primary{ width:550px; height:550px; background:var(--theme-color); top:-100px; left:-100px; }
+  .glow--secondary{ width:500px; height:500px; background:#12161f; bottom:-150px; right:-100px; }
+
+  .grid-floor{ position:absolute; inset:0; perspective:600px; perspective-origin:50% 20%; }
+  .grid-floor::before{
+    content:""; position:absolute; left:-50%; right:-50%; bottom:-10%; height:160%;
+    background-image: linear-gradient(rgba(255,255,255,0.02) 1px, transparent 1px), linear-gradient(90deg, rgba(255,255,255,0.02) 1px, transparent 1px);
+    background-size:56px 56px; transform:rotateX(75deg); transform-origin:bottom;
+    animation:gridDrift 20s linear infinite;
+    mask-image:linear-gradient(to top, rgba(0,0,0,0.8), transparent 75%);
+    -webkit-mask-image:linear-gradient(to top, rgba(0,0,0,0.8), transparent 75%);
+  }
+  @keyframes gridDrift{ from{ background-position:0 0; } to{ background-position:0 56px; } }
+
+  /* ---------- loader ---------- */
+  #loader{
+    position:fixed; inset:0; z-index:50; display:flex; flex-direction:column; align-items:center; justify-content:center; background:var(--bg);
+    transition:opacity .5s ease, visibility .5s ease;
+  }
+  #loader.hidden{ opacity:0; visibility:hidden; pointer-events:none; }
+  .loader-eyebrow{ font-family:'JetBrains Mono', monospace; font-size:11px; letter-spacing:.35em; color:var(--text-faint); margin-bottom:18px; opacity:0; animation:fadeUp .6s ease forwards; animation-delay:.1s; }
+  
+  .loader-text{
+    font-family:'Space Grotesk', sans-serif; font-weight:700; font-size:clamp(28px, 6vw, 52px); letter-spacing:.08em; color: transparent; -webkit-text-stroke: 1px rgba(255, 255, 255, 0.08);
+    background: linear-gradient(180deg, rgba(255, 255, 255, 0) 0%, rgba(79, 227, 193, 0.1) 40%, var(--cyan) 50%, rgba(255, 255, 255, 0) 60%);
+    background-size: 100% 200%; background-position-y: 150%; -webkit-background-clip: text; background-clip: text;
+    animation: verticalScan 2s cubic-bezier(0.4, 0, 0.2, 1) infinite;
+  }
+  @keyframes verticalScan { 0% { background-position-y: 150%; } 100% { background-position-y: -50%; } }
+  .loader-line{ position:relative; width:min(360px, 70vw); height:1px; margin-top:26px; background:transparent; }
+  .loader-line::before, .loader-line::after{ content:""; position:absolute; top:0; height:1px; background:linear-gradient(90deg, transparent, var(--cyan)); width:0; }
+  .loader-line::before{ left:0; transform-origin:left; } .loader-line::after{ right:0; background:linear-gradient(270deg, transparent, var(--cyan)); transform-origin:right; }
+  .loader-line.draw::before{ animation:lineGrowL .5s ease forwards; } .loader-line.draw::after{ animation:lineGrowR .5s ease forwards; }
+  @keyframes fadeUp{ to{ opacity:1; } }
+  @keyframes lineGrowL{ to{ width:50%; } }
+  @keyframes lineGrowR{ to{ width:50%; } }
+
+  /* ---------- LEFT SIDE: ACCESS INTERACTIVE QUOTE PANEL ---------- */
+  .quote-panel {
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+    align-items: flex-start;
+    padding-right: 20px;
+  }
+
+  .quote-tag {
+    font-family: 'Space Grotesk', sans-serif;
+    font-weight: 700;
+    font-size: 14px;
+    letter-spacing: 0.15em;
+    color: var(--theme-color);
+    margin-bottom: 20px;
+    text-transform: uppercase;
+    transition: color 0.4s ease;
+  }
+
+  .quote-container {
+    position: relative;
+    min-height: 160px;
+    width: 100%;
+    margin-bottom: 32px;
+  }
+
+  .quote-text {
+    position: absolute;
+    inset: 0;
+    font-family: 'JetBrains Mono', monospace;
+    font-size: clamp(16px, 2.5vw, 22px);
+    line-height: 1.6;
+    color: var(--text);
+    font-weight: 500;
+    opacity: 0;
+    transform: translateY(15px);
+    pointer-events: none;
+    transition: opacity 0.4s ease, transform 0.4s ease;
+  }
+
+  .quote-text.active {
+    opacity: 1;
+    transform: translateY(0);
+    pointer-events: auto;
+  }
+
+  .btn-next-quote {
+    position: relative;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 60px;
+    height: 60px;
+    border-radius: 50%;
+    background: rgba(255, 255, 255, 0.07);
+    border: 1px solid rgba(255, 255, 255, 0.25);
+    color: var(--text);
+    font-family: 'Space Grotesk', sans-serif;
+    font-weight: 700;
+    font-size: 28px;
+    box-shadow: 0 4px 15px rgba(0, 0, 0, 0.4);
+    transition: all 0.3s cubic-bezier(0.2, 0.8, 0.2, 1);
+  }
+
+  .btn-next-quote:hover {
+    color: var(--bg);
+    background: var(--theme-color);
+    border-color: var(--theme-color);
+    box-shadow: 0 0 25px var(--theme-color);
+  }
+
+  .btn-next-quote:active { transform: scale(0.92); }
+
+  .flying-arrow {
+    position: absolute;
+    font-family: 'Space Grotesk', sans-serif;
+    font-weight: 700;
+    font-size: 28px;
+    color: var(--theme-color);
+    pointer-events: none;
+    user-select: none;
+    z-index: 15;
+    animation: shootRight 0.45s cubic-bezier(0.25, 1, 0.5, 1) forwards;
+  }
+
+  @keyframes shootRight {
+    0% { opacity: 1; transform: translateX(0px) scale(1); }
+    100% { opacity: 0; transform: translateX(90px) scale(0.8); }
+  }
+
+  /* ---------- MAIN SPLIT GRID LAYOUT ---------- */
+  #stage{
+    position:fixed; inset:0; z-index:10;
+    display:grid; grid-template-columns: 1.1fr 0.9fr;
+    align-items:center; justify-content:center;
+    opacity:0; padding:40px; gap:60px;
+    max-width: 1200px; margin: 0 auto;
+  }
+  #stage.show{ opacity:1; }
+
+  /* ---------- RIGHT SIDE: ACCESS INTERFACE ---------- */
+  .right-stage {
+    display: flex;
+    justify-content: flex-start;
+    align-items: center;
+    width: 100%;
+  }
+
+  .card{
+    position:relative;
+    width: 100%;
+    max-width: 420px;
+    background:linear-gradient(180deg, var(--panel-2), var(--panel));
+    border:1px solid var(--border);
+    border-radius:var(--radius);
+    padding:40px 36px;
+    box-shadow: 0 30px 80px -20px rgba(0,0,0,.7);
+    transform:translateZ(-1000px) scale(.4) rotateX(10deg);
+    opacity:0;
+    transition: border-color 0.4s ease;
+  }
+  .card.enter{ animation:bounceIn .9s cubic-bezier(.2,.9,.25,1) forwards; }
+  @keyframes bounceIn{ 0%{ opacity:0; transform:translateZ(-1000px) scale(.4) rotateX(10deg); } 100%{ opacity:1; transform:translateZ(0) scale(1) rotateX(0); } }
+
+  .card.glow-flash {
+    animation: pureBorderGlow 0.5s cubic-bezier(0.25, 1, 0.5, 1) unset;
+    border-color: var(--theme-color);
+  }
+
+  @keyframes pureBorderGlow {
+    0% { border-color: var(--theme-color); }
+    100% { border-color: var(--border); }
+  }
+
+  .card-header{ text-align:center; margin-bottom:32px; }
+  .card-eyebrow{ font-family:'JetBrains Mono', monospace; font-size:10px; letter-spacing:.3em; color:var(--theme-color); margin-bottom:8px; transition: color 0.4s ease; }
+  .card-title{ font-family:'Space Grotesk', sans-serif; font-weight:700; font-size:26px; letter-spacing:.02em; }
+  .card-sub{ font-family:'Inter', sans-serif; font-size:13px; color:var(--text-dim); margin-top:6px; }
+
+  /* ---------- Form Elements ---------- */
+  .panel{ display:none; }
+  .panel.active-panel{ display:block; }
+  .field{ position:relative; margin-bottom:20px; }
+  .field-label{ display:block; font-family:'JetBrains Mono', monospace; font-size:10.5px; letter-spacing:.18em; color:var(--text-dim); margin-bottom:9px; overflow:hidden; white-space:nowrap; width:max-content; clip-path:inset(0 100% 0 0); }
+  .field.active .field-label{ animation:labelReveal .45s ease forwards; }
+  @keyframes labelReveal{ to{ clip-path:inset(0 0 0 0); } }
+
+  .field-line{ position:relative; height:1px; margin-bottom:10px; background:transparent; }
+  .field-line::before, .field-line::after{ content:""; position:absolute; top:0; height:1px; width:0; background:linear-gradient(90deg, transparent, var(--theme-color) 70%, var(--theme-color)); transition: background 0.4s ease; }
+  .field-line::before{ left:0; } .field-line::after{ right:0; background:linear-gradient(270deg, transparent, var(--theme-color) 70%, var(--theme-color)); }
+  .field.active .field-line::before{ animation:lineGrowL .45s ease forwards; } .field.active .field-line::after{ animation:lineGrowR .45s ease forwards; }
+
+  .field-input{
+    width:100%; background:rgba(255,255,255,.02); border:1px solid var(--border); border-radius:8px; padding:12px 14px; color:var(--text); font-family:'Inter', sans-serif; font-size:14px; opacity:0; transform:translateY(6px) scale(.98);
+    transition:border-color .2s ease, background .2s ease;
+  }
+  .field-input::placeholder{ color:var(--text-faint); }
+  .field-input:hover{ border-color:rgba(255,255,255,0.15); }
+  .field-input:focus{ border-color:var(--theme-color); background:rgba(255,255,255,.01); outline:none; }
+  .field.active .field-input{ animation:inputIn .45s ease forwards; animation-delay: .45s; }
+  @keyframes inputIn{ to{ opacity:1; transform:translateY(0) scale(1); } }
+
+  .field-action{ opacity:0; transform:translateY(6px); }
+  .field.active .field-action{ animation:inputIn .4s ease forwards; animation-delay:.45s; }
+
+  .btn-primary{ width:100%; padding:13px 14px; border-radius:8px; border:1px solid var(--theme-color); background:rgba(255,255,255,0.02); color:var(--theme-color); font-weight:600; font-size:14px; letter-spacing:.02em; transition: all 0.3s ease; }
+  .btn-primary:hover{ background:var(--theme-color); color: var(--bg); } .btn-primary:active{ transform:scale(.98); }
+
+  .divider{ display:flex; align-items:center; gap:12px; margin:8px 0 20px; font-family:'JetBrains Mono', monospace; font-size:10px; letter-spacing:.2em; color:var(--text-faint); }
+  .divider::before, .divider::after{ content:""; flex:1; height:1px; background:var(--border); }
+
+  .btn-google{ width:100%; display:flex; align-items:center; justify-content:center; gap:10px; padding:12px 14px; border-radius:8px; border:1px solid var(--border); background:rgba(255,255,255,.02); color:var(--text); font-size:14px; font-weight:500; transition:background .2s ease; }
+  .btn-google:hover{ background:rgba(255,255,255,.05); }
+
+  .switch-row{ text-align:center; margin-top:24px; font-size:13px; color:var(--text-dim); }
+  .switch-link{ background:none; border:none; color:var(--amber); font-weight:600; font-size:13px; text-decoration:none; }
+  .switch-link:hover{ text-decoration:underline; }
+  .error-msg{ font-family:'JetBrains Mono', monospace; font-size:11px; color:var(--danger); margin-top:-8px; margin-bottom:14px; min-height:14px; }
+
+  #toast{ position:fixed; bottom:28px; left:50%; transform:translate(-50%, 20px); background:var(--panel-2); border:1px solid var(--border-strong); color:var(--text); padding:12px 20px; border-radius:10px; font-size:13px; opacity:0; pointer-events:none; transition:opacity .3s ease, transform .3s ease; z-index:100; }
+  #toast.show{ opacity:1; transform:translate(-50%, 0); }
+
+  @media (max-width: 850px) {
+    #stage { grid-template-columns: 1fr; gap: 40px; overflow-y: auto; align-items: start; }
+    .quote-panel { padding-right: 0; margin-top: 20px; }
+    .quote-container { min-height: 120px; margin-bottom: 20px; }
+    .right-stage { justify-content: center; }
+  }
+</style>
+</head>
+<body data-theme="interview">
+
+  <div class="atmosphere">
+    <div class="glow glow--primary"></div>
+    <div class="glow glow--secondary"></div>
+    <div class="grid-floor"></div>
+  </div>
+
+  <div id="loader">
+    <div class="loader-eyebrow">LOADING...</div>
+    <div class="loader-text" id="loaderText">AI INTERVIEWER</div>
+    <div class="loader-line" id="loaderLine"></div>
+  </div>
+
+  <div id="stage">
+    
+    <div class="quote-panel">
+      <div class="quote-tag" id="quoteTag">The Interview</div>
+      <div class="quote-container">
+        <p class="quote-text active" id="q0">"Preparation meets opportunity. Every question is an open door to showcase your unique framework."</p>
+        <p class="quote-text" id="q1">"Don't just look for a seat at the table. Look for a launchpad where your talent can break rules and scale systems."</p>
+        <p class="quote-text" id="q2">"The future isn't something you wait for. It's constructed code line by line, interview by interview."</p>
+      </div>
+      <button class="btn-next-quote" id="btnNextQuote" aria-label="Next Quote">→</button>
+    </div>
+
+    <div class="right-stage">
+      <div class="card" id="card">
+
+        <div class="card-header">
+          <div class="card-eyebrow">CANDIDATE ACCESS</div>
+          <div class="card-title">AI Interviewer</div>
+          <div class="card-sub" id="cardSub">Sign in to start</div>
+        </div>
+
+        <form class="panel active-panel" id="loginPanel" novalidate>
+          <div class="field" data-field>
+            <label class="field-label" for="loginUser">USERNAME</label>
+            <div class="field-line"></div>
+            <input class="field-input" id="loginUser" name="username" type="text" placeholder="your.username" autocomplete="username" required>
+          </div>
+
+          <div class="field" data-field>
+            <label class="field-label" for="loginPass">PASSWORD</label>
+            <div class="field-line"></div>
+            <input class="field-input" id="loginPass" name="password" type="password" placeholder="••••••••" autocomplete="current-password" required>
+          </div>
+          <div class="error-msg" id="loginError"></div>
+
+          <div class="field" data-field>
+            <div class="field-action"><button type="submit" class="btn-primary">Continue</button></div>
+          </div>
+
+          <div class="field" data-field>
+            <div class="field-action">
+              <div class="divider">OR</div>
+              <button type="button" class="btn-google" id="googleBtn">
+                <svg width="16" height="16" viewBox="0 0 18 18"><path fill="#4285F4" d="M17.64 9.2c0-.64-.06-1.25-.16-1.84H9v3.48h4.84a4.14 4.14 0 0 1-1.8 2.72v2.26h2.9c1.7-1.57 2.7-3.88 2.7-6.62z"/><path fill="#34A853" d="M9 18c2.43 0 4.47-.8 5.96-2.18l-2.9-2.26c-.8.54-1.84.86-3.06.86-2.35 0-4.34-1.59-5.05-3.72H.94v2.33A9 9 0 0 0 9 18z"/><path fill="#FBBC05" d="M3.95 10.7A5.4 5.4 0 0 1 3.67 9c0-.59.1-1.17.28-1.7V4.97H.94A9 9 0 0 0 0 9c0 1.45.35 2.83.94 4.03l3.01-2.33z"/><path fill="#EA4335" d="M9 3.58c1.32 0 2.5.45 3.44 1.35l2.58-2.58C13.46.89 11.43 0 9 0A9 9 0 0 0 .94 4.97l3.01 2.33C4.66 5.17 6.65 3.58 9 3.58z"/></svg>
+                Continue with Google
+              </button>
+            </div>
+          </div>
+
+          <div class="switch-row">New here? <button type="button" class="switch-link" id="toRegister">Register</button></div>
+        </form>
+
+        <form class="panel" id="registerPanel" novalidate>
+          <div class="field" data-field><label class="field-label" for="regName">FULL NAME</label><div class="field-line"></div><input class="field-input" id="regName" name="name" type="text" placeholder="Full name" autocomplete="name" required></div>
+          <div class="field" data-field><label class="field-label" for="regEmail">EMAIL</label><div class="field-line"></div><input class="field-input" id="regEmail" name="email" type="email" placeholder="you@example.com" autocomplete="email" required></div>
+          <div class="field" data-field><label class="field-label" for="regPass">PASSWORD</label><div class="field-line"></div><input class="field-input" id="regPass" name="password" type="password" placeholder="••••••••" autocomplete="new-password" required></div>
+          <div class="field" data-field><label class="field-label" for="regConfirm">CONFIRM PASSWORD</label><div class="field-line"></div><input class="field-input" id="regConfirm" name="confirm" type="password" placeholder="••••••••" autocomplete="new-password" required></div>
+          <div class="error-msg" id="registerError"></div>
+          <div class="field" data-field><div class="field-action"><button type="submit" class="btn-primary">Create account</button></div></div>
+          <div class="switch-row">Already registered? <button type="button" class="switch-link" id="toLogin">Return to login</button></div>
+        </form>
+
+      </div>
+    </div>
+
+  </div>
+
+  <div id="toast"></div>
+
+  <script>
+    let toastTimer;
+    function showToast(msg){
+      const t = document.getElementById('toast'); t.textContent = msg; t.classList.add('show');
+      clearTimeout(toastTimer); toastTimer = setTimeout(() => t.classList.remove('show'), 2600);
+    }
+
+    const loaderLine = document.getElementById('loaderLine');
+    setTimeout(() => loaderLine.classList.add('draw'), 2400);
+
+    const loader = document.getElementById('loader');
+    const stage = document.getElementById('stage');
+    const card = document.getElementById('card');
+
+    setTimeout(() => {
+      loader.style.opacity = '0';
+      setTimeout(() => {
+        loader.classList.add('hidden');
+        stage.classList.add('show');
+        card.classList.add('enter');
+      }, 500);
+    }, 3200);
+
+    card.addEventListener('animationend', function onCardEnter(e){
+      if(e.target !== card || e.animationName !== 'bounceIn') return;
+      staggerFields(document.getElementById('loginPanel'));
+    });
+
+    const quotes = [
+      { tag: "The Interview", theme: "interview" },
+      { tag: "The Placement", theme: "job" },
+      { tag: "The Horizon", theme: "future" }
+    ];
+    let currentQuoteIndex = 0;
+    const btnNextQuote = document.getElementById('btnNextQuote');
+
+    btnNextQuote.addEventListener('click', () => {
+      const arrowShot = document.createElement('span');
+      arrowShot.classList.add('flying-arrow');
+      arrowShot.textContent = '→';
+      btnNextQuote.appendChild(arrowShot);
+      setTimeout(() => { arrowShot.remove(); }, 450);
+
+      card.classList.remove('glow-flash');
+      void card.offsetWidth;
+      card.classList.add('glow-flash');
+
+      document.getElementById(`q${currentQuoteIndex}`).classList.remove('active');
+      currentQuoteIndex = (currentQuoteIndex + 1) % quotes.length;
+
+      document.getElementById('quoteTag').textContent = quotes[currentQuoteIndex].tag;
+      document.getElementById(`q${currentQuoteIndex}`).classList.add('active');
+      document.body.setAttribute('data-theme', quotes[currentQuoteIndex].theme);
+    });
+
+    function staggerFields(panel){
+      const fields = panel.querySelectorAll('[data-field]');
+      fields.forEach(f => f.classList.remove('active'));
+      void panel.offsetWidth;
+      fields.forEach((f, i) => {
+        setTimeout(() => f.classList.add('active'), i * 130);
+      });
+    }
+
+    const loginPanel = document.getElementById('loginPanel');
+    const registerPanel = document.getElementById('registerPanel');
+    const cardSub = document.getElementById('cardSub');
+
+    function switchTo(panelToShow, panelToHide, subtitle){
+      panelToHide.classList.remove('active-panel');
+      panelToShow.classList.add('active-panel');
+      cardSub.textContent = subtitle;
+      staggerFields(panelToShow);
+    }
+
+    document.getElementById('toRegister').addEventListener('click', () => switchTo(registerPanel, loginPanel, 'Create your account to start a session'));
+    document.getElementById('toLogin').addEventListener('click', () => switchTo(loginPanel, registerPanel, 'Sign in to start your practice session'));
+
+    document.getElementById('googleBtn').addEventListener('click', () => {
+      showToast('Access Granted.');
+      setTimeout(() => { window.location.href = 'resume.html'; }, 800);
+    });
+
+    loginPanel.addEventListener('submit', async (e) => { 
+      e.preventDefault();
+      const username = document.getElementById('loginUser').value.trim();
+      const password = document.getElementById('loginPass').value;
+      try {
+        await fetch('/api/auth/login', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ username, password })
+        });
+      } catch (err) {}
+      showToast('Access Granted.'); 
+      setTimeout(() => {
+        window.location.href = 'resume.html';
+      }, 800);
+    });
+
+    registerPanel.addEventListener('submit', async (e) => { 
+      e.preventDefault();
+      const name = document.getElementById('regName').value.trim();
+      const email = document.getElementById('regEmail').value.trim();
+      const password = document.getElementById('regPass').value;
+      try {
+        await fetch('/api/auth/register', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ name, email, username: email || name, password })
+        });
+      } catch (err) {}
+      showToast('Account Registered.'); 
+      setTimeout(() => {
+        switchTo(loginPanel, registerPanel, 'Sign in to start your practice session');
+      }, 1000);
+    });
+  </script>
+</body>
+</html>
